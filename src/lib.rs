@@ -60,32 +60,39 @@ pub struct EmailParts {
     pub local_part: String,
     pub domain: String,
 }
-
+#[derive(Debug, Default)]
 #[pyclass]
 pub struct EmailValidator {
     allow_smtputf8: bool,
     allow_empty_local: bool,
     allow_quoted_local: bool,
     allow_domain_literal: bool,
-    allow_display_name: bool,
-    check_deliverability: bool,
-    globally_deliverable: bool,
-    timeout: Option<u64>,
+    // allow_display_name: bool,
+    // check_deliverability: bool,
+    // globally_deliverable: bool,
+    // timeout: Option<u64>,
 }
 
 #[pymethods]
 impl EmailValidator {
     #[new]
-    fn new() -> Self {
-        Self {
-            allow_smtputf8: false,
-            allow_empty_local: false,
-            allow_quoted_local: false,
-            allow_domain_literal: false,
-            allow_display_name: false,
-            check_deliverability: false,
-            globally_deliverable: false,
-            timeout: None,
+    #[pyo3(signature = (
+        allow_smtputf8 = false,
+        allow_empty_local = false,
+        allow_quoted_local = false,
+        allow_domain_literal = false
+    ))]
+    pub fn new(
+        allow_smtputf8: bool,
+        allow_empty_local: bool,
+        allow_quoted_local: bool,
+        allow_domain_literal: bool,
+    ) -> Self {
+        EmailValidator {
+            allow_smtputf8,
+            allow_empty_local,
+            allow_quoted_local,
+            allow_domain_literal,
         }
     }
 
@@ -101,16 +108,14 @@ impl EmailValidator {
         // Validate domain
         self.domain(&domain)?;
 
-        let validated_email = ValidatedEmail {
+        // Validate length
+        validate_length(&local_part, &domain)?;
+
+        Ok(ValidatedEmail {
             local_part,
             domain,
             is_valid: true,
-        };
-
-        // Validate length
-        validate_length(&validated_email)?;
-
-        Ok(validated_email)
+        })
     }
 
     pub fn local_part(&self, local_part: &str) -> PyResult<()> {
@@ -351,9 +356,9 @@ fn split_email(email: &str) -> Result<EmailParts, PyErr> {
     })
 }
 
-fn validate_length(email: &ValidatedEmail) -> Result<(), PyErr> {
+fn validate_length(local_part: &str, domain: &str) -> Result<(), PyErr> {
     // Validate email length
-    if email.local_part.len() + email.domain.len() + 1 > MAX_EMAIL_ADDRESS_LENGTH {
+    if local_part.len() + domain.len() + 1 > MAX_EMAIL_ADDRESS_LENGTH {
         return Err(LengthError::new_err("The email is too long".to_string()));
     }
     Ok(())
@@ -420,7 +425,7 @@ mod tests {
 
     #[test]
     fn test_validate_email() {
-        let validate = EmailValidator::new();
+        let validate = EmailValidator::default();
 
         // Valid email addresses
         assert!(validate.email("example@domain.com").is_ok());
@@ -440,7 +445,7 @@ mod tests {
 
     #[test]
     fn test_validate_domain() {
-        let mut validate = EmailValidator::new();
+        let mut validate = EmailValidator::default();
         assert!(validate.domain("domain.com").is_ok());
         assert!(validate.domain("invali*d.com").is_err()); // Invalid character
         validate.allow_domain_literal = true;
@@ -456,7 +461,7 @@ mod tests {
 
     #[test]
     fn test_validate_local_part() {
-        let validate = EmailValidator::new();
+        let validate = EmailValidator::default();
 
         assert!(validate.local_part("example").is_ok());
         assert!(validate.local_part("user.name").is_ok());
@@ -495,7 +500,7 @@ mod tests {
         // Valid internationalized local parts
         let validate_with_smtputf8 = EmailValidator {
             allow_smtputf8: true,
-            ..EmailValidator::new()
+            ..EmailValidator::default()
         };
 
         assert!(validate_with_smtputf8.local_part("用户").is_ok());
@@ -507,7 +512,7 @@ mod tests {
         // Valid internationalized local parts
         let validate_no_smtputf8 = EmailValidator {
             allow_smtputf8: false,
-            ..EmailValidator::new()
+            ..EmailValidator::default()
         };
 
         assert!(validate_no_smtputf8.local_part("üsername").is_err());
@@ -520,7 +525,7 @@ mod tests {
         // Valid quoted local parts
         let validate_with_quoted = EmailValidator {
             allow_quoted_local: true,
-            ..EmailValidator::new()
+            ..EmailValidator::default()
         };
 
         assert!(validate_with_quoted.local_part("\"user name\"").is_ok());
