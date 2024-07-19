@@ -1,0 +1,19 @@
+[package]
+name = "emv"
+version = "0.1.0"
+description = "emv is a blazingly fast email validator"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+[lib]
+name = "emv"
+crate-type = ["cdylib"]
+
+[dependencies]
+pyo3 = "0.22.0"
+
+# emv dependencies
+idna = "1.0.2"
+lazy_static = "1.5.0"
+regex = "1.10.5"
+unicode-properties = "0.1.1"
