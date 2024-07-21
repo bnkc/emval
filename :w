@@ -9,6 +9,7 @@ use std::usize;
 use idna::uts46::Uts46;
 use idna::uts46::{AsciiDenyList, DnsLength, Hyphens};
 use pyo3::exceptions::PyValueError;
+use pyo3::ffi::structmember;
 use pyo3::{create_exception, prelude::*};
 use regex::bytes::Regex;
 use unicode_properties::{GeneralCategoryGroup, UnicodeGeneralCategory};
@@ -49,9 +50,9 @@ create_exception!(emv, LengthError, PyValueError);
 
 #[derive(Debug, Clone)]
 #[pyclass]
-pub struct ValidatedDomain {
+struct ValidatedDomain {
     #[pyo3(get)]
-    address: Option<String>,
+    address: String,
     #[pyo3(get)]
     domain: String,
 }
@@ -122,11 +123,11 @@ impl EmailValidator {
         self.local_part(&local_part)?;
 
         // Validate domain
-        let vdomain = self.domain(&udomain)?;
+        let vdomain = self.domain(udomain)?;
 
         Ok(ValidatedEmail {
             local_part,
-            domain: vdomain,
+            vdomain,
             is_valid: true,
         })
     }
@@ -224,7 +225,7 @@ impl EmailValidator {
         Ok(())
     }
 
-    pub fn domain(&self, domain: &str) -> PyResult<ValidatedDomain> {
+    pub fn domain(&self, domain: String) -> PyResult<()> {
         if domain.is_empty() {
             return Err(SyntaxError::new_err(
                 "There needs to be something after the @".to_string(),
@@ -246,25 +247,16 @@ impl EmailValidator {
 
             let domain_literal = &domain[1..domain.len() - 1];
 
-            // if !domain_literal.contains(":") {
-            //     return Err(SyntaxError::new_err(
-            //         "The address is missing a literal tag".to_string(),
-            //     ));
-            // }
-
             // Handle IPv6 addresses
             if domain_literal.starts_with("IPv6:") {
                 let ipv6_literal = &domain_literal[5..];
                 match IpAddr::from_str(ipv6_literal) {
                     Ok(IpAddr::V6(addr)) => {
                         let normalized_domain = format!("[IPv6:{}]", addr);
-                        return Ok(ValidatedDomain {
-                            domain: normalized_domain,
-                            address: Some(addr.to_string()),
-                        });
+                        return Ok((addr.to_string(), normalized_domain));
                     }
                     _ => {
-                        return Err(SyntaxError::new_err(
+                        return Err(PyValueError::new_err(
                             "The IPv6 address in brackets after the @-sign is not valid."
                                 .to_string(),
                         ));
@@ -279,15 +271,19 @@ impl EmailValidator {
                         IpAddr::V4(_) => format!("[{}]", addr),
                         IpAddr::V6(_) => format!("[IPv6:{}]", addr),
                     };
-                    return Ok(ValidatedDomain {
-                        domain: normalized_domain,
-                        address: Some(addr.to_string()),
-                    });
+                    Ok((addr.to_string(), normalized_domain))
                 }
                 Err(_) => {
-                    return Err(SyntaxError::new_err("Invalid domain literal".to_string()));
+                    return Err(PyValueError::new_err("Invalid domain literal".to_string()));
                 }
             }
+
+            // if IpAddr::from_str(domain_literal).is_err() {
+            //     return Err(DomainLiteralError::new_err(
+            //         "Invalid domain literal".to_string(),
+            //     ));
+            // }
+            return Ok(());
         }
 
         // Check for invalid characters in the domain part
@@ -298,7 +294,7 @@ impl EmailValidator {
         }
 
         // Check for unsafe characters
-        validate_chars(&domain, false)?;
+        validate_chars(domain, false)?;
 
         // Normalize the domain
         let uts46 = Uts46::new();
@@ -359,10 +355,7 @@ impl EmailValidator {
             return Err(LengthError::new_err("The domain is too long".to_string()));
         }
 
-        Ok(ValidatedDomain {
-            domain: normalized_domain.to_string(),
-            address: None,
-        })
+        Ok(())
     }
 }
 
