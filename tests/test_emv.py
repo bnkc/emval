@@ -13,21 +13,21 @@ def test_domain_literal() -> None:
     validate = EmailValidator(allow_domain_literal=True)
     # Check parsing IPv4 addresses.
     validated_email = validate.email("me@[127.0.0.1]")
-    assert validated_email.domain.domain == "[127.0.0.1]"
+    assert validated_email.domain.name == "[127.0.0.1]"
 
     assert repr(validated_email.domain.address) == "IPv4Address('127.0.0.1')"
 
     # Check parsing IPv6 addresses.
-    # validated = validate.email("me@[IPv6:::1]")
-    # assert validated.domain == "[IPv6:::1]"
-    # # assert repr(validated.domain_address) == "IPv6Address('::1')"
+    validated_email = validate.email("me@[IPv6:::1]")
+    assert validated_email.domain.name == "[IPv6:::1]"
+    assert repr(validated_email.domain.address) == "IPv6Address('::1')"
 
     # # Check that IPv6 addresses are normalized.
-    # validated = validate.email(
-    #     "me@[IPv6:0000:0000:0000:0000:0000:0000:0000:0001]", allow_domain_literal=True
-    # )
-    # assert validated.domain == "[IPv6:::1]"
-    # assert repr(validated.domain_address) == "IPv6Address('::1')"
+    validated_email = validate.email(
+        "me@[IPv6:0000:0000:0000:0000:0000:0000:0000:0001]"
+    )
+    assert validated_email.domain.name == "[IPv6:::1]"
+    assert repr(validated_email.domain.address) == "IPv6Address('::1')"
 
     # @pytest.mark.parametrize(
     #     "email_input,normalized_local_part",

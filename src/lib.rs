@@ -2,7 +2,7 @@
 extern crate lazy_static;
 
 use std::collections::HashSet;
-use std::net::IpAddr;
+use std::net::{IpAddr, Ipv4Addr, Ipv6Addr};
 use std::str::FromStr;
 use std::usize;
 
@@ -38,9 +38,9 @@ lazy_static! {
     static ref QTEXT_INTL: Regex = Regex::new(r"[\u0020-\u007E\u0080-\u{10FFFF}]").unwrap();
 }
 
-const MAX_EMAIL_ADDRESS_LENGTH: usize = 254;
-const MAX_EMAIL_DOMAIN_LENGTH: usize = 253;
-const MAX_EMAIL_LOCAL_PART_LENGTH: usize = 64;
+const MAX_ADDRESS_LENGTH: usize = 254;
+const MAX_DOMAIN_LENGTH: usize = 253;
+const MAX_LOCAL_PART_LENGTH: usize = 64;
 const MAX_DNS_LABEL_LENGTH: usize = 63;
 
 create_exception!(emv, SyntaxError, PyValueError);
@@ -51,9 +51,9 @@ create_exception!(emv, LengthError, PyValueError);
 #[pyclass]
 pub struct ValidatedDomain {
     #[pyo3(get)]
-    address: Option<String>,
+    address: Option<IpAddr>,
     #[pyo3(get)]
-    domain: String,
+    name: String,
 }
 
 #[derive(Debug)]
@@ -140,7 +140,7 @@ impl EmailValidator {
         }
 
         // Check the length of the local part
-        if local_part.len() > MAX_EMAIL_LOCAL_PART_LENGTH {
+        if local_part.len() > MAX_LOCAL_PART_LENGTH {
             return Err(LengthError::new_err(
                 "The email address is too long befoe the @-sign".to_string(),
             ));
@@ -246,48 +246,36 @@ impl EmailValidator {
 
             let domain_literal = &domain[1..domain.len() - 1];
 
-            // if !domain_literal.contains(":") {
-            //     return Err(SyntaxError::new_err(
-            //         "The address is missing a literal tag".to_string(),
-            //     ));
-            // }
-
             // Handle IPv6 addresses
             if domain_literal.starts_with("IPv6:") {
                 let ipv6_literal = &domain_literal[5..];
-                match IpAddr::from_str(ipv6_literal) {
-                    Ok(IpAddr::V6(addr)) => {
-                        let normalized_domain = format!("[IPv6:{}]", addr);
-                        return Ok(ValidatedDomain {
-                            domain: normalized_domain,
-                            address: Some(addr.to_string()),
-                        });
-                    }
-                    _ => {
-                        return Err(SyntaxError::new_err(
-                            "The IPv6 address in brackets after the @-sign is not valid."
-                                .to_string(),
-                        ));
-                    }
+                let addr = IpAddr::from_str(ipv6_literal).map_err(|_| {
+                    SyntaxError::new_err(
+                        "The IPv6 address in brackets after the @-sign is not valid.".to_string(),
+                    )
+                })?;
+                if let IpAddr::V6(addr) = addr {
+                    let normalized_name = format!("[IPv6:{}]", addr);
+                    return Ok(ValidatedDomain {
+                        name: normalized_name,
+                        address: Some(IpAddr::V6(addr)),
+                    });
                 }
             }
 
             // Try to parse the domain literal as an IP address (either IPv4 or IPv6)
-            match IpAddr::from_str(domain_literal) {
-                Ok(addr) => {
-                    let normalized_domain = match addr {
-                        IpAddr::V4(_) => format!("[{}]", addr),
-                        IpAddr::V6(_) => format!("[IPv6:{}]", addr),
-                    };
-                    return Ok(ValidatedDomain {
-                        domain: normalized_domain,
-                        address: Some(addr.to_string()),
-                    });
-                }
-                Err(_) => {
-                    return Err(SyntaxError::new_err("Invalid domain literal".to_string()));
-                }
-            }
+            let addr = IpAddr::from_str(domain_literal)
+                .map_err(|_| SyntaxError::new_err("Invalid domain literal".to_string()))?;
+
+            let normalized_name = match addr {
+                IpAddr::V4(_) => format!("[{}]", addr),
+                IpAddr::V6(_) => format!("[IPv6:{}]", addr),
+            };
+
+            return Ok(ValidatedDomain {
+                name: normalized_name,
+                address: Some(addr),
+            });
         }
 
         // Check for invalid characters in the domain part
@@ -300,7 +288,7 @@ impl EmailValidator {
         // Check for unsafe characters
         validate_chars(&domain, false)?;
 
-        // Normalize the domain
+        // Normalize the domain using UTS-46
         let uts46 = Uts46::new();
         let normalized_domain = match uts46.to_ascii(
             domain.as_bytes(),
@@ -318,7 +306,7 @@ impl EmailValidator {
         };
 
         // Check for invalid chars after normalization
-        if !ATEXT_HOSTNAME_INTL.is_match(domain.as_bytes()) {
+        if !ATEXT_HOSTNAME_INTL.is_match(normalized_domain.as_bytes()) {
             return Err(SyntaxError::new_err(
                 "The part after the @-sign contains invalid characters.".to_string(),
             ));
@@ -355,12 +343,12 @@ impl EmailValidator {
         }
 
         // Check the total length of the domain
-        if normalized_domain.len() > MAX_EMAIL_DOMAIN_LENGTH {
+        if normalized_domain.len() > MAX_DOMAIN_LENGTH {
             return Err(LengthError::new_err("The domain is too long".to_string()));
         }
 
         Ok(ValidatedDomain {
-            domain: normalized_domain.to_string(),
+            name: normalized_domain.to_string(),
             address: None,
         })
     }
@@ -415,8 +403,7 @@ fn split_email(email: &str) -> Result<EmailParts, PyErr> {
 }
 
 fn validate_length(local_part: &str, domain: &str) -> Result<(), PyErr> {
-    // Validate email length
-    if local_part.len() + domain.len() + 1 > MAX_EMAIL_ADDRESS_LENGTH {
+    if local_part.len() + domain.len() + 1 > MAX_ADDRESS_LENGTH {
         return Err(LengthError::new_err("The email is too long".to_string()));
     }
     Ok(())
@@ -515,6 +502,51 @@ mod tests {
         assert!(validate
             .domain(&(String::from("a") + &".com".repeat(126)))
             .is_err()); // Domain too long
+
+        // Validate with domain literals
+        let validate_with_domain_literal = EmailValidator {
+            allow_domain_literal: true,
+            ..EmailValidator::default()
+        };
+
+        let validated_email = validate_with_domain_literal
+            .email("me@[127.0.0.1]")
+            .unwrap();
+
+        assert_eq!(validated_email.domain.name, "[127.0.0.1]");
+        assert!(
+            matches!(validated_email.domain.address, Some(IpAddr::V4(_))),
+            "Expected an IPv4 address"
+        );
+
+        // Check if the address is of type IPv4
+        if let Some(IpAddr::V4(addr)) = validated_email.domain.address {
+            assert_eq!(addr, Ipv4Addr::new(127, 0, 0, 1));
+        }
+
+        // Check parsing IPv6 addresses
+        let validated_email = validate_with_domain_literal.email("me@[IPv6:::1]").unwrap();
+        assert_eq!(validated_email.domain.name, "[IPv6:::1]");
+        assert!(
+            matches!(validated_email.domain.address, Some(IpAddr::V6(_))),
+            "Expected an IPv6 address"
+        );
+        if let Some(IpAddr::V6(addr)) = validated_email.domain.address {
+            assert_eq!(addr, Ipv6Addr::from_str("::1").unwrap());
+        }
+
+        // Check that IPv6 addresses are normalized
+        let validated_email = validate_with_domain_literal
+            .email("me@[IPv6:0000:0000:0000:0000:0000:0000:0000:0001]")
+            .unwrap();
+        assert_eq!(validated_email.domain.name, "[IPv6:::1]");
+        assert!(
+            matches!(validated_email.domain.address, Some(IpAddr::V6(_))),
+            "Expected an IPv6 address"
+        );
+        if let Some(IpAddr::V6(addr)) = validated_email.domain.address {
+            assert_eq!(addr, Ipv6Addr::from_str("::1").unwrap());
+        }
     }
 
     #[test]
@@ -534,7 +566,7 @@ mod tests {
         assert!(validate.local_part("").is_err());
 
         // Invalid local parts - too long
-        let long_local_part = "a".repeat(MAX_EMAIL_LOCAL_PART_LENGTH + 1);
+        let long_local_part = "a".repeat(MAX_LOCAL_PART_LENGTH + 1);
         assert!(validate.local_part(&long_local_part).is_err());
 
         // Invalid local parts - starts with dot
