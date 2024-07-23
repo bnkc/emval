@@ -14,7 +14,7 @@ use regex::bytes::Regex;
 use unicode_properties::{GeneralCategoryGroup, UnicodeGeneralCategory};
 
 lazy_static! {
-    // ATOM
+    // 3.2.3.  Atom
     //
     // atext           =   ALPHA / DIGIT /    ; Printable US-ASCII
     //                     "!" / "#" /        ;  characters not including
@@ -61,7 +61,80 @@ lazy_static! {
     // Domain literal (RFC 5322 3.4.1)
     static ref DOMAIN_LITERAL_CHARS: Regex = Regex::new(r"[\u0021-\u00FA\u005E-\u007E]").unwrap();
 
-    // Quoted-string local part (RFC 5321 4.1.2, internationalized by RFC 6531 3.3)
+    // 4.1.2.  Command Argument Syntax
+    //
+    //
+    // Reverse-path   = Path / "<>"
+    //
+    // Forward-path   = Path
+    //
+    // Path           = "<" [ A-d-l ":" ] Mailbox ">"
+    //
+    // A-d-l          = At-domain *( "," At-domain )
+    //                ; Note that this form, the so-called "source
+    //                ; route", MUST BE accepted, SHOULD NOT be
+    //                ; generated, and SHOULD be ignored.
+    //
+    // At-domain      = "@" Domain
+    //
+    // Mail-parameters  = esmtp-param *(SP esmtp-param)
+    //
+    // Rcpt-parameters  = esmtp-param *(SP esmtp-param)
+    //
+    // esmtp-param    = esmtp-keyword ["=" esmtp-value]
+    //
+    // esmtp-keyword  = (ALPHA / DIGIT) *(ALPHA / DIGIT / "-")
+    //
+    // esmtp-value    = 1*(%d33-60 / %d62-126)
+    //                ; any CHAR excluding "=", SP, and control
+    //                ; characters.  If this string is an email address,
+    //                ; i.e., a Mailbox, then the "xtext" syntax [32]
+    //                ; SHOULD be used.
+    //
+    // Keyword        = Ldh-str
+    //
+    // Argument       = Atom
+    //
+    // Domain         = sub-domain *("." sub-domain)
+    //
+    // sub-domain     = Let-dig [Ldh-str]
+    //
+    // Let-dig        = ALPHA / DIGIT
+    //
+    // Ldh-str        = *( ALPHA / DIGIT / "-" ) Let-dig
+    //
+    // address-literal  = "[" ( IPv4-address-literal /
+    //                  IPv6-address-literal /
+    //                  General-address-literal ) "]"
+    //                  ; See Section 4.1.3
+    //
+    // Mailbox        = Local-part "@" ( Domain / address-literal )
+    //
+    // Local-part     = Dot-string / Quoted-string
+    //                ; MAY be case-sensitive
+    //
+    //
+    // Dot-string     = Atom *("."  Atom)
+    //
+    // Atom           = 1*atext
+    //
+    // Quoted-string  = DQUOTE *QcontentSMTP DQUOTE
+    //
+    // QcontentSMTP   = qtextSMTP / quoted-pairSMTP
+    //
+    // quoted-pairSMTP  = %d92 %d32-126
+    //                  ; i.e., backslash followed by any ASCII
+    //                  ; graphic (including itself) or SPace
+    //
+    // qtextSMTP      = %d32-33 / %d35-91 / %d93-126
+    //                ; i.e., within a quoted string, any
+    //                ; ASCII graphic or space is permitted
+    //                ; without blackslash-quoting except
+    //                ; double-quote and the backslash itself.
+    //
+    // String         = Atom / Quoted-string
+    //
+    // See https://www.rfc-editor.org/rfc/rfc5321.html#section-4.1.2
     static ref QTEXT_INTL: Regex = Regex::new(r"[\u0020-\u007E\u0080-\u{10FFFF}]").unwrap();
 }
 
@@ -145,19 +218,19 @@ impl EmailValidator {
         validate_length(&local_part, &udomain)?;
 
         // Validate local part
-        self.local_part(&local_part)?;
+        let vlocal = self.local_part(&local_part)?;
 
         // Validate domain
         let vdomain = self.domain(&udomain)?;
 
         Ok(ValidatedEmail {
-            local_part,
+            local_part: vlocal,
             domain: vdomain,
             is_valid: true,
         })
     }
 
-    pub fn local_part(&self, local: &str) -> PyResult<()> {
+    pub fn local_part(&self, local: &str) -> PyResult<String> {
         // Guard clause if local_part is being executed independently
         if local.is_empty() {
             if !self.allow_empty_local {
@@ -167,18 +240,18 @@ impl EmailValidator {
             }
 
             // Allowing empty local part.
-            return Ok(());
+            return Ok(local.to_string());
         }
 
         // Remove Surrounding quotes, unescaping any escaped characters within quotes.
-        // This will help with local-part validation
-        let unquoted_local = unquote_local_part(local)?;
+        // Assuming that quoted locals are allowed.
+        // This will help with local-part validation.
+        let unquoted_local = unquote_local_part(local, self.allow_quoted_local)?;
 
         // Local-part
         //
         // The maximum total length of a user name or other local-part is 64
         // octets.
-        //
         // See https://www.rfc-editor.org/rfc/rfc5321.html#section-4.5.3.1.1
         if unquoted_local.len() > MAX_LOCAL_PART_LENGTH {
             return Err(LengthError::new_err(
@@ -192,10 +265,9 @@ impl EmailValidator {
         // In some cases, these fields also allow periods within sequences of atoms, referred to as "dot-atom" tokens.
         // All local parts that match the Atom rule are also valid as a quoted string, so we can
         // return here and skip the rest of the validation
-        //
         // See https://www.rfc-editor.org/rfc/rfc5322.html#section-3.2.3
         if DOT_ATOM_TEXT.is_match(unquoted_local.as_bytes()) {
-            return Ok(());
+            return Ok(unquoted_local);
         }
 
         // Extended Mailbox Address Syntax
@@ -204,7 +276,6 @@ impl EmailValidator {
         // - Updates the <Mailbox> ABNF rule for internationalized email addresses.
         // - Extends <sub-domain> to include UTF-8 strings conforming to IDNA definitions.
         // - Broadens <atext> to allow UTF-8 strings, excluding ASCII graphics or control characters.
-        //
         // See https://www.rfc-editor.org/rfc/rfc6531#section-3.3
         if DOT_ATOM_TEXT_INTL.is_match(unquoted_local.as_bytes()) {
             if !self.allow_smtputf8 {
@@ -212,17 +283,23 @@ impl EmailValidator {
                     "Internationalized characters before the @-sign are not supported",
                 ));
             }
-        }
 
-        // Check for quoted local part and if it's allowed using the original local part.
-        if local.starts_with('"') && local.ends_with('"') {
-            // Check that the quoted local part is allowed, otherwise raise exception
-            if !self.allow_quoted_local {
+            // Check for unsafe characters
+            validate_chars(&unquoted_local, false)?;
+
+            // Try encoding to UTF-8
+            if let Err(_) = String::from_utf8(local.as_bytes().to_vec()) {
                 return Err(SyntaxError::new_err(
-                    "Quoting the part before the @-sign is not allowed here.",
+                    "The email address contains an invalid character",
                 ));
             }
 
+            return Ok(unquoted_local.to_string());
+        }
+        // Check for quoted local part and if it's allowed using the original local part.
+        else if local.starts_with('"') && local.ends_with('"') {
+            // Check for invalid characters that are not permitted in quoted local parts
+            // See https://www.rfc-editor.org/rfc/rfc5321.html#section-4.1.2
             let bad_chars: HashSet<_> = local
                 .chars()
                 .filter(|&c| !QTEXT_INTL.is_match(c.to_string().as_bytes()))
@@ -249,7 +326,7 @@ impl EmailValidator {
             }
 
             // Check for unsafe characters
-            validate_chars(local, true)?;
+            validate_chars(&unquoted_local, true)?;
 
             // Try encoding to UTF-8
             if let Err(_) = String::from_utf8(local.as_bytes().to_vec()) {
@@ -258,7 +335,7 @@ impl EmailValidator {
                 ));
             }
 
-            return Ok(());
+            return Ok(local.to_string());
         }
 
         // See https://www.rfc-editor.org/rfc/rfc5322.html#section-3.2.3
@@ -301,7 +378,6 @@ impl EmailValidator {
         // If a host is not recognized by the DNS, special address forms can be used.
         // For IPv4, this is four decimal numbers in brackets (e.g., [123.255.37.2]).
         // For IPv6, it includes a tag and the address (e.g., per RFC 4291).
-        //
         // See https://www.rfc-editor.org/rfc/rfc5321.html#section-4.1.3
         if domain.starts_with('[') && domain.ends_with(']') {
             if !self.allow_domain_literal {
@@ -420,8 +496,15 @@ impl EmailValidator {
     }
 }
 
-fn unquote_local_part(local: &str) -> Result<String, PyErr> {
+fn unquote_local_part(local: &str, allow_quoted: bool) -> Result<String, PyErr> {
     if local.starts_with('"') && local.ends_with('"') {
+        // Check that the quoted local part is allowed, otherwise raise exception
+        if !allow_quoted {
+            return Err(SyntaxError::new_err(
+                "Quoting the part before the @-sign is not allowed here.",
+            ));
+        }
+
         let mut unquoted = String::new();
         let mut chars = local[1..local.len() - 1].chars().peekable();
         while let Some(c) = chars.next() {
@@ -669,11 +752,13 @@ mod tests {
         };
 
         assert!(validate_no_smtputf8.local_part("üsername").is_err());
-
         // Invalid local parts - quoted local parts with invalid characters
         assert!(validate.local_part("\"user@name\"").is_err());
         assert!(validate.local_part("\"user\nname\"").is_err());
         assert!(validate.local_part("\"user\rname\"").is_err());
+        assert!(validate
+            .local_part("\"unnecessarily.quoted.local.part\"")
+            .is_err());
 
         // Valid quoted local parts
         let validate_with_quoted = EmailValidator {
@@ -687,9 +772,12 @@ mod tests {
         assert!(validate_with_quoted.local_part("\"user.name\"").is_ok());
         assert!(validate_with_quoted.local_part("\"user+name\"").is_ok());
         assert!(validate_with_quoted.local_part("\"user_name\"").is_ok());
-
         assert!(validate_with_quoted
             .local_part("\"quoted.with..unicode.λ\"")
+            .is_ok());
+
+        assert!(validate_with_quoted
+            .local_part("\"unnecessarily.quoted.with.unicode.λ\"")
             .is_ok());
     }
 
