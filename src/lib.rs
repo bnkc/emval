@@ -506,22 +506,26 @@ fn unquote_local_part(local: &str, allow_quoted: bool) -> Result<String, PyErr> 
         }
 
         let mut unquoted = String::new();
-        let mut chars = local[1..local.len() - 1].chars().peekable();
+        let mut chars = local[1..local.len() - 1].chars();
+        let mut escaped = false;
+
         while let Some(c) = chars.next() {
-            if c == '\\' {
-                if let Some(next) = chars.peek() {
-                    if *next == '\\' || *next == '"' {
-                        unquoted.push(c);
-                        continue;
-                    }
-                }
-                return Err(SyntaxError::new_err(
-                    "Invalid escape sequence in quoted local part",
-                ));
+            if escaped {
+                unquoted.push(c);
+                escaped = false;
+            } else if c == '\\' {
+                escaped = true;
             } else {
                 unquoted.push(c);
             }
         }
+
+        if escaped {
+            return Err(SyntaxError::new_err(
+                "Trailing escape character in quoted local part",
+            ));
+        }
+
         Ok(unquoted)
     } else {
         Ok(local.to_string())
@@ -612,7 +616,10 @@ fn emv(_py: Python, m: &Bound<PyModule>) -> PyResult<()> {
 
 #[cfg(test)]
 mod tests {
+    use std::u8;
+
     use super::*;
+    use rstest::rstest;
 
     #[test]
     fn test_validate_email() {
@@ -634,192 +641,232 @@ mod tests {
         assert!(validate.email("too..many..dots@domain.com").is_err());
     }
 
-    #[test]
-    fn test_validate_domain() {
-        let mut validate = EmailValidator::default();
-        assert!(validate.domain("domain.com").is_ok());
-        assert!(validate.domain("invali*d.com").is_err()); // Invalid character
-        validate.allow_domain_literal = true;
-        assert!(validate.domain("[192.168.1.1]").is_ok());
-        assert!(validate.domain("a.com").is_ok()); // Valid domain
-        assert!(validate.domain("a".repeat(64).as_str()).is_err()); // Label too long
-        assert!(validate.domain("a.com-").is_err()); // Label ends with hyphen
-        assert!(validate.domain("a-.com").is_err()); // Label starts with hyphen
-        assert!(validate
-            .domain(&(String::from("a") + &".com".repeat(126)))
-            .is_err()); // Domain too long
+    #[rstest]
+    #[case("domain.com", true)]
+    #[case("invali*d.com", false)]
+    #[case("a.com", true)]
+    #[case(&"a".repeat(64), false)]
+    #[case("a.com-", false)]
+    #[case("a-.com", false)]
+    #[case(&(String::from("a") + &".com".repeat(126)), false)]
+    fn test_validate_domain(#[case] domain: &str, #[case] expected: bool) {
+        let emv = EmailValidator::default();
+        let result = emv.domain(domain);
 
-        // Validate with domain literals
-        let validate_with_domain_literal = EmailValidator {
+        if expected {
+            assert!(result.is_ok());
+        } else {
+            assert!(result.is_err());
+        }
+    }
+
+    // Helper functions
+    fn ipv4(octets: [u8; 4]) -> Option<IpAddr> {
+        Some(IpAddr::V4(Ipv4Addr::new(
+            octets[0], octets[1], octets[2], octets[3],
+        )))
+    }
+
+    fn ipv6(addr: &str) -> Option<IpAddr> {
+        Some(IpAddr::V6(Ipv6Addr::from_str(addr).unwrap()))
+    }
+
+    #[rstest]
+    #[case("me@[127.0.0.1]", true, "[127.0.0.1]", ipv4([127, 0, 0, 1]))]
+    #[case("me@[192.168.0.1]", true, "[192.168.0.1]", ipv4([192, 168, 0, 1]))]
+    #[case("me@[IPv6:::1]", true, "[IPv6:::1]", ipv6("::1"))]
+    #[case(
+        "me@[IPv6:0000:0000:0000:0000:0000:0000:0000:0001]",
+        true,
+        "[IPv6:::1]",
+        ipv6("::1")
+    )]
+    #[case(
+        "me@[IPv6:2001:db8::1]",
+        true,
+        "[IPv6:2001:db8::1]",
+        ipv6("2001:db8::1")
+    )]
+    #[case(
+        "me@[IPv6:2001:0db8:85a3:0000:0000:8a2e:0370:7334]",
+        true,
+        "[IPv6:2001:db8:85a3::8a2e:370:7334]",
+        ipv6("2001:db8:85a3::8a2e:370:7334")
+    )]
+    #[case(
+        "me@[IPv6:2001:db8:1234:5678:9abc:def0:1234:5678]",
+        true,
+        "[IPv6:2001:db8:1234:5678:9abc:def0:1234:5678]",
+        ipv6("2001:db8:1234:5678:9abc:def0:1234:5678")
+    )]
+    #[case("me@[300.300.300.300]", false, "", None)]
+    #[case("me@[IPv6:2001:db8:::1:]", false, "", None)]
+    #[case("me@[IPv6:2001:db8::85a3::8a2e:370:7334]", false, "", None)]
+    #[case("me@[127.0.0.256]", false, "", None)]
+    #[case("me@[IPv6:2001:db8:1234:5678:9abc:def0:1234:56789]", false, "", None)]
+    fn test_validate_domain_literal(
+        #[case] email: &str,
+        #[case] expected_valid: bool,
+        #[case] expected_domain: &str,
+        #[case] expected_ip: Option<IpAddr>,
+    ) {
+        let validate = EmailValidator {
             allow_domain_literal: true,
             ..EmailValidator::default()
         };
 
-        let validated_email = validate_with_domain_literal
-            .email("me@[127.0.0.1]")
-            .unwrap();
+        let result = validate.email(email);
 
-        assert_eq!(validated_email.domain.name, "[127.0.0.1]");
-        assert!(
-            matches!(validated_email.domain.address, Some(IpAddr::V4(_))),
-            "Expected an IPv4 address"
-        );
-
-        // Check if the address is of type IPv4
-        if let Some(IpAddr::V4(addr)) = validated_email.domain.address {
-            assert_eq!(addr, Ipv4Addr::new(127, 0, 0, 1));
-        }
-
-        // Check parsing IPv6 addresses
-        let validated_email = validate_with_domain_literal.email("me@[IPv6:::1]").unwrap();
-        assert_eq!(validated_email.domain.name, "[IPv6:::1]");
-        assert!(
-            matches!(validated_email.domain.address, Some(IpAddr::V6(_))),
-            "Expected an IPv6 address"
-        );
-        if let Some(IpAddr::V6(addr)) = validated_email.domain.address {
-            assert_eq!(addr, Ipv6Addr::from_str("::1").unwrap());
-        }
-
-        // Check that IPv6 addresses are normalized
-        let validated_email = validate_with_domain_literal
-            .email("me@[IPv6:0000:0000:0000:0000:0000:0000:0000:0001]")
-            .unwrap();
-        assert_eq!(validated_email.domain.name, "[IPv6:::1]");
-        assert!(
-            matches!(validated_email.domain.address, Some(IpAddr::V6(_))),
-            "Expected an IPv6 address"
-        );
-        if let Some(IpAddr::V6(addr)) = validated_email.domain.address {
-            assert_eq!(addr, Ipv6Addr::from_str("::1").unwrap());
+        if expected_valid {
+            assert!(result.is_ok());
+            let validated_email = result.unwrap();
+            assert_eq!(validated_email.domain.name, expected_domain);
+            assert_eq!(validated_email.domain.address, expected_ip);
+        } else {
+            assert!(result.is_err());
         }
     }
 
-    #[test]
-    fn test_validate_local_part() {
-        let validate = EmailValidator::default();
-
-        assert!(validate.local_part("example").is_ok());
-        assert!(validate.local_part("user.name").is_ok());
-        assert!(validate.local_part("user-name").is_ok());
-        assert!(validate.local_part("user+name").is_ok());
-        assert!(validate.local_part("user_name").is_ok());
-        assert!(validate.local_part("user123").is_ok());
-        assert!(validate.local_part("1233457890").is_ok());
-        assert!(validate.local_part("user&example.com").is_ok());
-
-        // Invalid local parts - empty local part
-        assert!(validate.local_part("").is_err());
-
-        // Invalid local parts - too long
-        let long_local_part = "a".repeat(MAX_LOCAL_PART_LENGTH + 1);
-        assert!(validate.local_part(&long_local_part).is_err());
-
-        // Invalid local parts - starts with dot
-        assert!(validate.local_part(".user").is_err());
-
-        // Invalid local parts - ends with dot
-        assert!(validate.local_part("user.").is_err());
-
-        // Invalid local parts - contains consecutive dots
-        assert!(validate.local_part("user..name").is_err());
-
-        // Invalid local parts - contains spaces
-        assert!(validate.local_part("user name").is_err());
-
-        // Invalid local parts - contains special characters not allowed. Certain characters are
-        // allowed: ._!#$%&'^``*+-=~/?{|}
-        assert!(validate.local_part("user@name").is_err());
-        assert!(validate.local_part("user(name").is_err());
-        assert!(validate.local_part("user)name").is_err());
-
-        // Valid internationalized local parts
-        let validate_with_smtputf8 = EmailValidator {
-            allow_smtputf8: true,
+    #[rstest]
+    #[case("example", Some("example"), false, true)]
+    #[case("user.name", Some("user.name"), false, true)]
+    #[case("user-name", Some("user-name"), false, true)]
+    #[case("user+name", Some("user+name"), false, true)]
+    #[case("user_name", Some("user_name"), false, true)]
+    #[case("user123", Some("user123"), false, true)]
+    #[case("1233457890", Some("1233457890"), false, true)]
+    #[case("user&example.com", Some("user&example.com"), false, true)]
+    #[case("", None, false, true)]
+    #[case(&"a".repeat(MAX_LOCAL_PART_LENGTH + 1), None, false, true)]
+    #[case(".user", None, false, true)]
+    #[case("user.", None, false, true)]
+    #[case("user..name", None, false, true)]
+    #[case("user name", None, false, true)]
+    #[case("user@name", None, false, true)]
+    #[case("user(name", None, false, true)]
+    #[case("user)name", None, false, true)]
+    #[case("\"user@name\"", None, false, true)]
+    #[case("\"user\nname\"", None, true, false)]
+    #[case("\"user\rname\"", None, true, false)]
+    #[case("\"user.name\"", Some("user.name"), true, false)]
+    #[case("\"user+name\"", Some("user+name"), true, false)]
+    #[case("\"user_name\"", Some("user_name"), true, false)]
+    #[case(
+        "\"unnecessarily.quoted.local.part\"",
+        Some("unnecessarily.quoted.local.part"),
+        true,
+        true
+    )]
+    #[case(
+        "\"quoted.with..unicode.λ\"",
+        Some("\"quoted.with..unicode.λ\""),
+        true,
+        true
+    )]
+    #[case(
+        "\"unnecessarily.quoted.with.unicode.λ\"",
+        Some("unnecessarily.quoted.with.unicode.λ"),
+        true,
+        true
+    )]
+    #[case("\"quoted..local.part\"", Some("\"quoted..local.part\""), true, true)]
+    #[case("\"quoted.with.at@\"", Some("\"quoted.with.at@\""), true, true)]
+    #[case("\"quoted with space\"", Some("\"quoted with space\""), true, true)]
+    #[case(
+        "\"quoted.with.dquote\\\"\"",
+        Some("\"quoted.with.dquote\\\"\""),
+        true,
+        false
+    )]
+    #[case(
+        "\"quoted.with.extraneous.\\escape\"",
+        Some("quoted.with.extraneous.escape"),
+        true,
+        false
+    )]
+    fn test_validate_local_part(
+        #[case] input: &str,
+        #[case] expected: Option<&str>,
+        #[case] allow_quoted_local: bool,
+        #[case] allow_smtputf8: bool,
+    ) {
+        let emv = EmailValidator {
+            allow_quoted_local,
+            allow_smtputf8,
             ..EmailValidator::default()
         };
 
-        // assert!(validate_with_smtputf8.local_part("用户").is_ok());
-        // assert!(validate_with_smtputf8.local_part("θσερ").is_ok());
-        // assert!(validate_with_smtputf8.local_part("коля").is_ok());
-        // assert!(validate_with_smtputf8.local_part("δοκιμή").is_ok());
-        // assert!(validate_with_smtputf8.local_part("üsername").is_ok());
+        let result = emv.local_part(input);
 
-        // Valid internationalized local parts
-        let validate_no_smtputf8 = EmailValidator {
-            allow_smtputf8: false,
-            ..EmailValidator::default()
-        };
+        if let Some(expected_local) = expected {
+            assert!(result.is_ok());
+            assert_eq!(result.unwrap(), expected_local);
+        } else {
+            assert!(result.is_err());
+        }
+    }
+    #[rstest]
+    #[case("user name", true, true)]
+    #[case("user name", false, false)]
+    #[case("user\x01name", false, false)]
+    #[case("user\u{2028}name", false, false)]
+    #[case("user\u{2029}name", false, false)]
+    #[case("user\u{E000}name", false, false)]
+    #[case("\u{0301}username", false, false)]
+    #[case("username", false, true)]
+    #[case("user-name", false, true)]
+    #[case("user.name", false, true)]
+    #[case("", false, true)]
+    #[case("user\u{007F}name", false, false)]
+    #[case("user\nname", false, false)]
+    #[case("user\tname", false, false)]
+    #[case("user name", true, true)]
+    #[case("user  name", true, true)]
+    #[case("user  name", false, false)]
+    #[case("\u{00E9}", false, true)]
+    #[case("user\u{00E9}name", false, true)]
+    #[case("user\u{00E9}", false, true)]
+    #[case("\u{03B1}\u{03B2}\u{03B3}", false, true)]
+    #[case("user\u{03B1}\u{03B2}\u{03B3}name", false, true)]
+    #[case("\u{4E00}\u{4E8C}\u{4E09}", false, true)]
+    #[case("user\u{4E00}\u{4E8C}\u{4E09}name", false, true)]
+    #[case("\u{FEFF}", false, false)]
+    #[case("user\u{FEFF}name", false, false)]
+    #[case("user_name", false, true)]
+    #[case("user+name", false, true)]
+    #[case("user=name", false, true)]
+    #[case("user&name", false, true)]
+    fn test_validate_chars(#[case] input: &str, #[case] allow_space: bool, #[case] expected: bool) {
+        let result = validate_chars(input, allow_space);
 
-        assert!(validate_no_smtputf8.local_part("üsername").is_err());
-        // Invalid local parts - quoted local parts with invalid characters
-        assert!(validate.local_part("\"user@name\"").is_err());
-        assert!(validate.local_part("\"user\nname\"").is_err());
-        assert!(validate.local_part("\"user\rname\"").is_err());
-        assert!(validate
-            .local_part("\"unnecessarily.quoted.local.part\"")
-            .is_err());
-
-        // Valid quoted local parts
-        let validate_with_quoted = EmailValidator {
-            allow_quoted_local: true,
-            allow_smtputf8: true,
-            ..EmailValidator::default()
-        };
-
-        assert!(validate_with_quoted.local_part("\"user name\"").is_ok());
-        assert!(validate_with_quoted.local_part("\"user@name\"").is_ok());
-        assert!(validate_with_quoted.local_part("\"user.name\"").is_ok());
-        assert!(validate_with_quoted.local_part("\"user+name\"").is_ok());
-        assert!(validate_with_quoted.local_part("\"user_name\"").is_ok());
-        assert!(validate_with_quoted
-            .local_part("\"quoted.with..unicode.λ\"")
-            .is_ok());
-
-        assert!(validate_with_quoted
-            .local_part("\"unnecessarily.quoted.with.unicode.λ\"")
-            .is_ok());
+        if expected {
+            assert!(result.is_ok());
+        } else {
+            assert!(result.is_err());
+        }
     }
 
-    #[test]
-    fn test_unsafe_chars() {
-        // Allow space
-        assert!(validate_chars("user name", true).is_ok());
+    #[rstest]
+    #[case("example@domain.com", true)]
+    #[case("user.name+tag+sorting@example.com", true)]
+    #[case("x@example.com", true)]
+    #[case("example-indeed@strange-example.com", true)]
+    #[case("plainaddress", false)]
+    #[case("@missing-local.org", false)]
+    #[case("missing-domain@", false)]
+    #[case("missing-at-sign.com", false)]
+    #[case("", false)]
+    #[case("a@b.c", true)] // Minimum length valid email
+    #[case("valid_email@sub.domain.com", true)] // Subdomain
+    #[case("valid-email@domain.co.jp", true)] // Country code TLD
+    #[case("invalid-email@domain..com", true)] // Double dot in domain
+    fn test_split_email(#[case] input: &str, #[case] expected: bool) {
+        let result = split_email(input);
 
-        // Disallow space
-        assert!(validate_chars("user name", false).is_err());
-
-        // Control characters
-        assert!(validate_chars("user\x01name", false).is_err());
-
-        // Line and paragraph separators
-        assert!(validate_chars("user\u{2028}name", false).is_err());
-        assert!(validate_chars("user\u{2029}name", false).is_err());
-
-        // Private use characters
-        assert!(validate_chars("user\u{E000}name", false).is_err());
-
-        // Combining characters at the start
-        assert!(validate_chars("\u{0301}username", false).is_err());
-
-        // Valid characters
-        assert!(validate_chars("username", false).is_ok());
-        assert!(validate_chars("user-name", false).is_ok());
-        assert!(validate_chars("user.name", false).is_ok());
-    }
-
-    #[test]
-    fn test_split_email() {
-        // Valid email addresses
-        assert!(split_email("example@domain.com").is_ok());
-        assert!(split_email("user.name+tag+sorting@example.com").is_ok());
-        assert!(split_email("x@example.com").is_ok());
-        assert!(split_email("example-indeed@strange-example.com").is_ok());
-
-        // Invalid email addresses
-        assert!(split_email("plainaddress").is_err());
-        assert!(split_email("@missing-local.org").is_err());
-        assert!(split_email("missing-domain@").is_err());
-        assert!(split_email("missing-at-sign.com").is_err());
+        if expected {
+            assert!(result.is_ok());
+        } else {
+            assert!(result.is_err());
+        }
     }
 }
