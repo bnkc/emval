@@ -145,6 +145,24 @@ const MAX_DNS_LABEL_LENGTH: usize = 63;
 const SPECIAL_USE_DOMAIN_NAMES: &[&str] =
     &["arpa", "invalid", "local", "localhost", "onion", "test"];
 
+// See https://www.rfc-editor.org/rfc/rfc2142.html
+const CASE_INSENSITIVE_MAILBOX_NAMES: &[&str] = &[
+    "info",
+    "marketing",
+    "sales",
+    "support",
+    "abuse",
+    "noc",
+    "security",
+    "postmaster",
+    "hostmaster",
+    "usenet",
+    "news",
+    "webmaster",
+    "www",
+    "uucp",
+    "ftp",
+];
 create_exception!(emv, SyntaxError, PyValueError);
 create_exception!(emv, DomainLiteralError, PyValueError);
 create_exception!(emv, LengthError, PyValueError);

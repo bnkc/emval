@@ -93,3 +93,34 @@ def test_email_valid_only_if_quoted_local_part(
     # Check that the normalized form correctly removed unnecessary backslash escaping
     # and even the quoting if they weren't necessary.
     assert validated_email.local_part == normalized_local_part
+
+
+@pytest.mark.parametrize(
+    ("email_input", "expected_error"),
+    [
+        (
+            "λambdaツ@test",
+            "Internationalized characters before the @-sign are not supported",
+        ),
+        (
+            '"quoted.with..unicode.λ"@example.com',
+            "Internationalized characters before the @-sign are not supported",
+        ),
+    ],
+)
+def test_email_invalid_character_smtputf8_off(
+    email_input: str, expected_error: str
+) -> None:
+    emv = EmailValidator(allow_smtputf8=False, allow_quoted_local=True)
+
+    # Check that internationalized characters are rejected if allow_smtputf8=False.
+    with pytest.raises(SyntaxError) as exc_info:
+        emv.email(email_input)
+    assert str(exc_info.value) == expected_error
+
+
+# def test_case_insensitive_mailbox_name() -> None:
+#     emv = EmailValidator()
+#
+#     emv.email("POSTMASTER@test").normalized = "postmaster@test"
+#     emv.email("NOT-POSTMASTER@test").normalized = "NOT-POSTMASTER@test"
