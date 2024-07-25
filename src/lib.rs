@@ -623,22 +623,22 @@ mod tests {
 
     #[test]
     fn test_validate_email() {
-        let validate = EmailValidator::default();
+        let emv = EmailValidator::default();
 
         // Valid email addresses
-        assert!(validate.email("example@domain.com").is_ok());
-        assert!(validate.email("user.name+tag+sorting@example.com").is_ok());
-        assert!(validate.email("x@example.com").is_ok());
-        assert!(validate.email("example-indeed@strange-example.com").is_ok());
+        assert!(emv.email("example@domain.com").is_ok());
+        assert!(emv.email("user.name+tag+sorting@example.com").is_ok());
+        assert!(emv.email("x@example.com").is_ok());
+        assert!(emv.email("example-indeed@strange-example.com").is_ok());
 
         // Invalid email addresses
-        assert!(validate.email("plainaddress").is_err());
-        assert!(validate.email("@missing-local.org").is_err());
-        assert!(validate.email("missing-domain@.com").is_err());
-        assert!(validate.email("missing-at-sign.com").is_err());
-        assert!(validate.email("missing-tld@domain.").is_err());
-        assert!(validate.email("invalid-char@domain.c*m").is_err());
-        assert!(validate.email("too..many..dots@domain.com").is_err());
+        assert!(emv.email("plainaddress").is_err());
+        assert!(emv.email("@missing-local.org").is_err());
+        assert!(emv.email("missing-domain@.com").is_err());
+        assert!(emv.email("missing-at-sign.com").is_err());
+        assert!(emv.email("missing-tld@domain.").is_err());
+        assert!(emv.email("invalid-char@domain.c*m").is_err());
+        assert!(emv.email("too..many..dots@domain.com").is_err());
     }
 
     #[rstest]
@@ -710,12 +710,12 @@ mod tests {
         #[case] expected_domain: &str,
         #[case] expected_ip: Option<IpAddr>,
     ) {
-        let validate = EmailValidator {
+        let emv = EmailValidator {
             allow_domain_literal: true,
             ..EmailValidator::default()
         };
 
-        let result = validate.email(email);
+        let result = emv.email(email);
 
         if expected_valid {
             assert!(result.is_ok());
