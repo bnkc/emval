@@ -31,6 +31,27 @@ def test_domain_literal() -> None:
 
 
 @pytest.mark.parametrize(
+    "email_input",
+    [
+        ("me@anything.arpa"),
+        ("me@valid.invalid"),
+        ("me@link.local"),
+        ("me@host.localhost"),
+        ("me@onion.onion.onion"),
+        ("me@test.test.test"),
+    ],
+)
+def test_email_invalid_reserved_domain(email_input: str) -> None:
+    emv = EmailValidator()
+
+    # Since these all fail deliverabiltiy from a static list,
+    # DNS deliverability checks do not arise.
+    with pytest.raises(SyntaxError) as exc_info:
+        emv.email(email_input)
+    assert "is a special-use or reserved name" in str(exc_info.value)
+
+
+@pytest.mark.parametrize(
     "email_input,normalized_local_part",
     [
         (

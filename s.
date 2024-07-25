@@ -144,7 +144,6 @@ const MAX_LOCAL_PART_LENGTH: usize = 64;
 const MAX_DNS_LABEL_LENGTH: usize = 63;
 const SPECIAL_USE_DOMAIN_NAMES: &[&str] =
     &["arpa", "invalid", "local", "localhost", "onion", "test"];
-
 create_exception!(emv, SyntaxError, PyValueError);
 create_exception!(emv, DomainLiteralError, PyValueError);
 create_exception!(emv, LengthError, PyValueError);
@@ -680,6 +679,7 @@ mod tests {
     #[case("me@host.localhost", false)]
     #[case("me@onion.onion.onion", false)]
     #[case("me@test.test.test", false)]
+    #[case(&(String::from("a") + &".com".repeat(126)), false)]
     fn test_special_use_domains(#[case] domain: &str, #[case] expected: bool) {
         let emv = EmailValidator::default();
         let result = emv.domain(domain);
