@@ -119,8 +119,11 @@ def test_email_invalid_character_smtputf8_off(
     assert str(exc_info.value) == expected_error
 
 
-# def test_case_insensitive_mailbox_name() -> None:
-#     emv = EmailValidator()
-#
-#     emv.email("POSTMASTER@test").normalized = "postmaster@test"
-#     emv.email("NOT-POSTMASTER@test").normalized = "NOT-POSTMASTER@test"
+def test_case_insensitive_mailbox_name() -> None:
+    emv = EmailValidator()
+
+    assert emv.email("POSTMASTER@example.com").normalized == "postmaster@example.com"
+    assert (
+        emv.email("NOT-POSTMASTER@example.com").normalized
+        == "NOT-POSTMASTER@example.com"
+    )
