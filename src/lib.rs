@@ -2,7 +2,7 @@
 extern crate lazy_static;
 
 use std::collections::HashSet;
-use std::net::{IpAddr, Ipv4Addr, Ipv6Addr};
+use std::net::IpAddr;
 use std::str::FromStr;
 use std::usize;
 
@@ -14,33 +14,6 @@ use regex::bytes::Regex;
 use unicode_properties::{GeneralCategoryGroup, UnicodeGeneralCategory};
 
 lazy_static! {
-    // 3.2.3.  Atom
-    //
-    // atext           =   ALPHA / DIGIT /    ; Printable US-ASCII
-    //                     "!" / "#" /        ;  characters not including
-    //                     "$" / "%" /        ;  specials.  Used for atoms.
-    //                     "&" / "'" /
-    //                     "*" / "+" /
-    //                     "-" / "/" /
-    //                     "=" / "?" /
-    //                     "^" / "_" /
-    //                     "`" / "{" /
-    //                     "|" / "}" /
-    //                     "~"
-    //
-    // atom            =   [CFWS] 1*atext [CFWS]
-    //
-    // dot-atom-text   =   1*atext *("." 1*atext)
-    //
-    // dot-atom        =   [CFWS] dot-atom-text [CFWS]
-    //
-    // specials        =   "(" / ")" /        ; Special characters that do
-    //                     "<" / ">" /        ;  not appear in atext
-    //                     "[" / "]" /
-    //                     ":" / ";" /
-    //                     "@" / "\" /
-    //                     "," / "." /
-    //
     // See https://www.rfc-editor.org/rfc/rfc5322.html#section-3.2.3
     static ref ATEXT: &'static str = r"a-zA-Z0-9_!#\$%&'\*\+\-/=\?\^`\{\|\}~";
     static ref ATEXT_RE: Regex = Regex::new(&format!(r"[.{}]", *ATEXT)).unwrap();
@@ -61,79 +34,6 @@ lazy_static! {
     // Domain literal (RFC 5322 3.4.1)
     static ref DOMAIN_LITERAL_CHARS: Regex = Regex::new(r"[\u0021-\u00FA\u005E-\u007E]").unwrap();
 
-    // 4.1.2.  Command Argument Syntax
-    //
-    //
-    // Reverse-path   = Path / "<>"
-    //
-    // Forward-path   = Path
-    //
-    // Path           = "<" [ A-d-l ":" ] Mailbox ">"
-    //
-    // A-d-l          = At-domain *( "," At-domain )
-    //                ; Note that this form, the so-called "source
-    //                ; route", MUST BE accepted, SHOULD NOT be
-    //                ; generated, and SHOULD be ignored.
-    //
-    // At-domain      = "@" Domain
-    //
-    // Mail-parameters  = esmtp-param *(SP esmtp-param)
-    //
-    // Rcpt-parameters  = esmtp-param *(SP esmtp-param)
-    //
-    // esmtp-param    = esmtp-keyword ["=" esmtp-value]
-    //
-    // esmtp-keyword  = (ALPHA / DIGIT) *(ALPHA / DIGIT / "-")
-    //
-    // esmtp-value    = 1*(%d33-60 / %d62-126)
-    //                ; any CHAR excluding "=", SP, and control
-    //                ; characters.  If this string is an email address,
-    //                ; i.e., a Mailbox, then the "xtext" syntax [32]
-    //                ; SHOULD be used.
-    //
-    // Keyword        = Ldh-str
-    //
-    // Argument       = Atom
-    //
-    // Domain         = sub-domain *("." sub-domain)
-    //
-    // sub-domain     = Let-dig [Ldh-str]
-    //
-    // Let-dig        = ALPHA / DIGIT
-    //
-    // Ldh-str        = *( ALPHA / DIGIT / "-" ) Let-dig
-    //
-    // address-literal  = "[" ( IPv4-address-literal /
-    //                  IPv6-address-literal /
-    //                  General-address-literal ) "]"
-    //                  ; See Section 4.1.3
-    //
-    // Mailbox        = Local-part "@" ( Domain / address-literal )
-    //
-    // Local-part     = Dot-string / Quoted-string
-    //                ; MAY be case-sensitive
-    //
-    //
-    // Dot-string     = Atom *("."  Atom)
-    //
-    // Atom           = 1*atext
-    //
-    // Quoted-string  = DQUOTE *QcontentSMTP DQUOTE
-    //
-    // QcontentSMTP   = qtextSMTP / quoted-pairSMTP
-    //
-    // quoted-pairSMTP  = %d92 %d32-126
-    //                  ; i.e., backslash followed by any ASCII
-    //                  ; graphic (including itself) or SPace
-    //
-    // qtextSMTP      = %d32-33 / %d35-91 / %d93-126
-    //                ; i.e., within a quoted string, any
-    //                ; ASCII graphic or space is permitted
-    //                ; without blackslash-quoting except
-    //                ; double-quote and the backslash itself.
-    //
-    // String         = Atom / Quoted-string
-    //
     // See https://www.rfc-editor.org/rfc/rfc5321.html#section-4.1.2
     static ref QTEXT_INTL: Regex = Regex::new(r"[\u0020-\u007E\u0080-\u{10FFFF}]").unwrap();
 }
@@ -144,8 +44,6 @@ const MAX_LOCAL_PART_LENGTH: usize = 64;
 const MAX_DNS_LABEL_LENGTH: usize = 63;
 const SPECIAL_USE_DOMAIN_NAMES: &[&str] =
     &["arpa", "invalid", "local", "localhost", "onion", "test"];
-
-// See https://www.rfc-editor.org/rfc/rfc2142.html
 const CASE_INSENSITIVE_MAILBOX_NAMES: &[&str] = &[
     "info",
     "marketing",
@@ -163,51 +61,39 @@ const CASE_INSENSITIVE_MAILBOX_NAMES: &[&str] = &[
     "uucp",
     "ftp",
 ];
+
 create_exception!(emv, SyntaxError, PyValueError);
 create_exception!(emv, DomainLiteralError, PyValueError);
 create_exception!(emv, LengthError, PyValueError);
 
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 #[pyclass]
-pub struct ValidatedDomain {
+struct ValidatedDomain {
     #[pyo3(get)]
     address: Option<IpAddr>,
     #[pyo3(get)]
     name: String,
 }
 
-#[derive(Debug)]
 #[pyclass]
-pub struct ValidatedEmail {
+struct ValidatedEmail {
     #[pyo3(get)]
-    pub original: String,
+    original: String,
     #[pyo3(get)]
-    pub normalized: String,
+    normalized: String,
     #[pyo3(get)]
-    pub local_part: String,
+    local_part: String,
     #[pyo3(get)]
-    pub domain: ValidatedDomain,
-    #[pyo3(get)]
-    pub is_valid: bool,
+    domain: ValidatedDomain,
 }
 
-#[derive(Debug)]
-pub struct EmailParts {
-    pub local_part: String,
-    pub domain: String,
-}
-
-#[derive(Debug, Default)]
+#[derive(Default)]
 #[pyclass]
-pub struct EmailValidator {
+struct EmailValidator {
     allow_smtputf8: bool,
     allow_empty_local: bool,
     allow_quoted_local: bool,
     allow_domain_literal: bool,
-    // allow_display_name: bool,
-    // check_deliverability: bool,
-    // globally_deliverable: bool,
-    // timeout: Option<u64>,
 }
 
 #[pymethods]
@@ -219,7 +105,7 @@ impl EmailValidator {
         allow_quoted_local = false,
         allow_domain_literal = false
     ))]
-    pub fn new(
+    fn new(
         allow_smtputf8: bool,
         allow_empty_local: bool,
         allow_quoted_local: bool,
@@ -233,23 +119,21 @@ impl EmailValidator {
         }
     }
 
-    pub fn email(&self, email: &str) -> PyResult<ValidatedEmail> {
+    fn validate_email(&self, email: &str) -> PyResult<ValidatedEmail> {
         // Split the email into local part and domain
-        let parts = split_email(&email)?;
-        let unvalidated_local_part = parts.local_part;
-        let unvalidated_domain = parts.domain;
+        let (unvalidated_local_part, unvalidated_domain) = _split_email(&email)?;
 
         // Validate length of the local part and the domain
-        validate_length(&unvalidated_local_part, &unvalidated_domain)?;
+        _validate_email_length(&unvalidated_local_part, &unvalidated_domain)?;
 
         // Validate local part and convert to lowercase if necessary
-        let mut validated_local = self.local_part(&unvalidated_local_part)?;
+        let mut validated_local = self._validate_local_part(&unvalidated_local_part)?;
         if CASE_INSENSITIVE_MAILBOX_NAMES.contains(&validated_local.to_lowercase().as_str()) {
             validated_local = validated_local.to_lowercase();
         }
 
         // Validate the domain
-        let validated_domain = self.domain(&unvalidated_domain)?;
+        let validated_domain = self._validate_domain(&unvalidated_domain)?;
 
         // Construct the normalized email
         let normalized = format!("{}@{}", validated_local, validated_domain.name);
@@ -259,69 +143,47 @@ impl EmailValidator {
             local_part: validated_local,
             domain: validated_domain,
             normalized,
-            is_valid: true,
         })
     }
 
-    pub fn local_part(&self, local: &str) -> PyResult<String> {
-        // Guard clause if local_part is being executed independently
+    fn _validate_local_part(&self, local: &str) -> PyResult<String> {
+        // Guard clause for empty local part
         if local.is_empty() {
-            if !self.allow_empty_local {
-                return Err(SyntaxError::new_err(
-                    "There needs to be something before the the @-sign",
-                ));
-            }
-
-            // Allowing empty local part.
-            return Ok(local.to_string());
+            return if self.allow_empty_local {
+                Ok(local.to_string())
+            } else {
+                Err(SyntaxError::new_err(
+                    "There needs to be something before the @-sign",
+                ))
+            };
         }
 
-        // Remove Surrounding quotes, unescaping any escaped characters within quotes.
-        // Assuming that quoted locals are allowed.
-        // This will help with local-part validation.
-        let unquoted_local = unquote_local_part(local, self.allow_quoted_local)?;
+        // Remove surrounding quotes, unescaping any escaped characters within quotes
+        let unquoted_local = _unquote_local_part(local, self.allow_quoted_local)?;
 
-        // Local-part
-        //
-        // The maximum total length of a user name or other local-part is 64
-        // octets.
-        // See https://www.rfc-editor.org/rfc/rfc5321.html#section-4.5.3.1.1
+        // Local part length validation
         if unquoted_local.len() > MAX_LOCAL_PART_LENGTH {
             return Err(LengthError::new_err(
-                "The email address is too long befoe the @-sign",
+                "The email address is too long before the @-sign",
             ));
         }
 
-        // Atom
-        //
-        // Some structured header fields consist of strings called atoms, which contain basic characters.
-        // In some cases, these fields also allow periods within sequences of atoms, referred to as "dot-atom" tokens.
-        // All local parts that match the Atom rule are also valid as a quoted string, so we can
-        // return here and skip the rest of the validation
-        // See https://www.rfc-editor.org/rfc/rfc5322.html#section-3.2.3
+        // Check for valid dot-atom text
         if DOT_ATOM_TEXT.is_match(unquoted_local.as_bytes()) {
             return Ok(unquoted_local);
         }
 
-        // Extended Mailbox Address Syntax
-        //
-        // RFC 5321 defines the <Mailbox> syntax using only ASCII characters. This document extends it to support non-ASCII characters with these key changes:
-        // - Updates the <Mailbox> ABNF rule for internationalized email addresses.
-        // - Extends <sub-domain> to include UTF-8 strings conforming to IDNA definitions.
-        // - Broadens <atext> to allow UTF-8 strings, excluding ASCII graphics or control characters.
-        // See https://www.rfc-editor.org/rfc/rfc6531#section-3.3
+        // Check for valid internationalized dot-atom text
         if DOT_ATOM_TEXT_INTL.is_match(unquoted_local.as_bytes()) {
             if !self.allow_smtputf8 {
                 return Err(SyntaxError::new_err(
                     "Internationalized characters before the @-sign are not supported",
                 ));
             }
+            _validate_chars(&unquoted_local, false)?;
 
-            // Check for unsafe characters
-            validate_chars(&unquoted_local, false)?;
-
-            // Try encoding to UTF-8
-            if let Err(_) = String::from_utf8(local.as_bytes().to_vec()) {
+            // Check for valid UTF-8 encoding
+            if String::from_utf8(unquoted_local.as_bytes().to_vec()).is_err() {
                 return Err(SyntaxError::new_err(
                     "The email address contains an invalid character",
                 ));
@@ -329,40 +191,35 @@ impl EmailValidator {
 
             return Ok(unquoted_local.to_string());
         }
-        // Check for quoted local part and if it's allowed using the original local part.
-        else if local.starts_with('"') && local.ends_with('"') {
-            // Check for invalid characters that are not permitted in quoted local parts
-            // See https://www.rfc-editor.org/rfc/rfc5321.html#section-4.1.2
-            let bad_chars: HashSet<_> = local
+
+        // Check for quoted local part and validate
+        if local.starts_with('"') && local.ends_with('"') {
+            let invalid_chars: HashSet<_> = local
                 .chars()
                 .filter(|&c| !QTEXT_INTL.is_match(c.to_string().as_bytes()))
                 .collect();
 
-            if !bad_chars.is_empty() {
+            if !invalid_chars.is_empty() {
                 return Err(SyntaxError::new_err(
                     "The email address contains invalid characters in quotes before the @-sign",
                 ));
             }
 
-            // Check for non-ASCII range characters
-            let bad_chars: HashSet<_> = local
+            let invalid_non_ascii_chars: HashSet<_> = local
                 .chars()
                 .filter(|&c| !(32..=126).contains(&(c as u32)))
                 .collect();
 
-            if !bad_chars.is_empty() {
-                if !self.allow_smtputf8 {
-                    return Err(SyntaxError::new_err(
-                        "Internationalized characters before the @-sign are not supported",
-                    ));
-                }
+            if !invalid_non_ascii_chars.is_empty() && !self.allow_smtputf8 {
+                return Err(SyntaxError::new_err(
+                    "Internationalized characters before the @-sign are not supported",
+                ));
             }
 
-            // Check for unsafe characters
-            validate_chars(&unquoted_local, true)?;
+            _validate_chars(&unquoted_local, true)?;
 
-            // Try encoding to UTF-8
-            if let Err(_) = String::from_utf8(local.as_bytes().to_vec()) {
+            // Check for valid UTF-8 encoding
+            if String::from_utf8(local.as_bytes().to_vec()).is_err() {
                 return Err(SyntaxError::new_err(
                     "The email address contains an invalid character",
                 ));
@@ -371,13 +228,13 @@ impl EmailValidator {
             return Ok(local.to_string());
         }
 
-        // See https://www.rfc-editor.org/rfc/rfc5322.html#section-3.2.3
-        let bad_chars: HashSet<_> = unquoted_local
+        // Check for other invalid characters
+        let invalid_chars: HashSet<_> = unquoted_local
             .chars()
             .filter(|&c| !ATEXT_INTL_DOT_RE.is_match(c.to_string().as_bytes()))
             .collect();
 
-        if !bad_chars.is_empty() {
+        if !invalid_chars.is_empty() {
             return Err(SyntaxError::new_err(
                 "The email address contains invalid characters before the @-sign",
             ));
@@ -388,34 +245,28 @@ impl EmailValidator {
             || unquoted_local.ends_with('.')
             || unquoted_local.contains("..")
         {
-            return Err(SyntaxError::new_err(
-                "The local part of the email address cannot start or end with a dot, or contain consecutive dots"
-            ));
+            return Err(SyntaxError::new_err("The local part of the email address cannot start or end with a dot, or contain consecutive dots"));
         }
 
-        // We've exhuasted all validation clauses. Fallback error.
+        // Fallback error for unhandled cases
         Err(SyntaxError::new_err(
             "The email address contains invalid characters before the @-sign.",
         ))
     }
 
-    pub fn domain(&self, domain: &str) -> PyResult<ValidatedDomain> {
+    fn _validate_domain(&self, domain: &str) -> PyResult<ValidatedDomain> {
+        // Guard clause if domain is being executed independently
         if domain.is_empty() {
             return Err(SyntaxError::new_err(
-                "There needs to be something after the @".to_string(),
+                "There needs to be something after the @",
             ));
         }
 
         // Address Literals
-        //
-        // If a host is not recognized by the DNS, special address forms can be used.
-        // For IPv4, this is four decimal numbers in brackets (e.g., [123.255.37.2]).
-        // For IPv6, it includes a tag and the address (e.g., per RFC 4291).
-        // See https://www.rfc-editor.org/rfc/rfc5321.html#section-4.1.3
         if domain.starts_with('[') && domain.ends_with(']') {
             if !self.allow_domain_literal {
                 return Err(DomainLiteralError::new_err(
-                    "Domain Literals are not allowed".to_string(),
+                    "Domain Literals are not allowed",
                 ));
             }
 
@@ -426,13 +277,12 @@ impl EmailValidator {
                 let ipv6_literal = &domain_literal[5..];
                 let addr = IpAddr::from_str(ipv6_literal).map_err(|_| {
                     SyntaxError::new_err(
-                        "The IPv6 address in brackets after the @-sign is not valid.".to_string(),
+                        "The IPv6 address in brackets after the @-sign is not valid.",
                     )
                 })?;
                 if let IpAddr::V6(addr) = addr {
-                    let normalized_name = format!("[IPv6:{}]", addr);
                     return Ok(ValidatedDomain {
-                        name: normalized_name,
+                        name: format!("[IPv6:{}]", addr),
                         address: Some(IpAddr::V6(addr)),
                     });
                 }
@@ -440,15 +290,13 @@ impl EmailValidator {
 
             // Try to parse the domain literal as an IP address (either IPv4 or IPv6)
             let addr = IpAddr::from_str(domain_literal)
-                .map_err(|_| SyntaxError::new_err("Invalid domain literal".to_string()))?;
-
-            let normalized_name = match addr {
-                IpAddr::V4(_) => format!("[{}]", addr),
-                IpAddr::V6(_) => format!("[IPv6:{}]", addr),
-            };
+                .map_err(|_| SyntaxError::new_err("Invalid domain literal"))?;
 
             return Ok(ValidatedDomain {
-                name: normalized_name,
+                name: match addr {
+                    IpAddr::V4(_) => format!("[{}]", addr),
+                    IpAddr::V6(_) => format!("[IPv6:{}]", addr),
+                },
                 address: Some(addr),
             });
         }
@@ -456,34 +304,32 @@ impl EmailValidator {
         // Check for invalid characters in the domain part
         if !ATEXT_HOSTNAME_INTL.is_match(domain.as_bytes()) {
             return Err(SyntaxError::new_err(
-                "The part after the @-sign contains invalid characters.".to_string(),
+                "The part after the @-sign contains invalid characters.",
             ));
         }
 
         // Check for unsafe characters
-        validate_chars(&domain, false)?;
+        _validate_chars(domain, false)?;
 
         // Normalize the domain using UTS-46
-        let uts46 = Uts46::new();
-        let normalized_domain = match uts46.to_ascii(
-            domain.as_bytes(),
-            AsciiDenyList::URL,
-            Hyphens::Allow,
-            DnsLength::Verify,
-        ) {
-            Ok(norm) => norm,
-            Err(err) => {
-                return Err(SyntaxError::new_err(format!(
+        let normalized_domain = Uts46::new()
+            .to_ascii(
+                domain.as_bytes(),
+                AsciiDenyList::URL,
+                Hyphens::Allow,
+                DnsLength::Verify,
+            )
+            .map_err(|err| {
+                SyntaxError::new_err(format!(
                     "The part after the @-sign contains invalid characters ({:?})",
                     err
-                )))
-            }
-        };
+                ))
+            })?;
 
         // Check for invalid chars after normalization
         if !ATEXT_HOSTNAME_INTL.is_match(normalized_domain.as_bytes()) {
             return Err(SyntaxError::new_err(
-                "The part after the @-sign contains invalid characters.".to_string(),
+                "The part after the @-sign contains invalid characters.",
             ));
         }
 
@@ -493,43 +339,38 @@ impl EmailValidator {
             || normalized_domain.contains("..")
         {
             return Err(SyntaxError::new_err(
-                "The email address cannot start or end with a dot, or contain consecutive dots"
-                    .to_string(),
+                "The email address cannot start or end with a dot, or contain consecutive dots",
             ));
         }
 
         // Check for invalid domain labels
         for label in normalized_domain.split('.') {
             if label.len() > MAX_DNS_LABEL_LENGTH {
-                return Err(LengthError::new_err(
-                    "The DNS label is too long".to_string(),
-                ));
+                return Err(LengthError::new_err("The DNS label is too long"));
             }
             if label.starts_with('-') || label.ends_with('-') {
                 return Err(SyntaxError::new_err(
-                    "The DNS label cannot start or end with a hyphen".to_string(),
+                    "The DNS label cannot start or end with a hyphen",
                 ));
             }
-            if label.len() == 0 {
-                return Err(SyntaxError::new_err(
-                    "The DNS label cannot be empty".to_string(),
-                ));
+            if label.is_empty() {
+                return Err(SyntaxError::new_err("The DNS label cannot be empty"));
             }
         }
 
         // Check the total length of the domain
         if normalized_domain.len() > MAX_DOMAIN_LENGTH {
-            return Err(LengthError::new_err("The domain is too long".to_string()));
+            return Err(LengthError::new_err("The domain is too long"));
         }
 
         // Check for reserved and "special use" domains
-        for &domain in SPECIAL_USE_DOMAIN_NAMES {
-            if normalized_domain == domain || normalized_domain.ends_with(&format!(".{}", domain)) {
-                return Err(
-                    SyntaxError::new_err(
-                        "The part after the @-sign is a special-use or reserved name that cannot be used with email."
-                    )
-                );
+        for &special_domain in SPECIAL_USE_DOMAIN_NAMES {
+            if normalized_domain == special_domain
+                || normalized_domain.ends_with(&format!(".{}", special_domain))
+            {
+                return Err(SyntaxError::new_err(
+                "The part after the @-sign is a special-use or reserved name that cannot be used with email.",
+            ));
             }
         }
 
@@ -540,7 +381,7 @@ impl EmailValidator {
     }
 }
 
-fn unquote_local_part(local: &str, allow_quoted: bool) -> Result<String, PyErr> {
+fn _unquote_local_part(local: &str, allow_quoted: bool) -> Result<String, PyErr> {
     if local.starts_with('"') && local.ends_with('"') {
         // Check that the quoted local part is allowed, otherwise raise exception
         if !allow_quoted {
@@ -576,7 +417,7 @@ fn unquote_local_part(local: &str, allow_quoted: bool) -> Result<String, PyErr> 
     }
 }
 
-fn split_email(email: &str) -> Result<EmailParts, PyErr> {
+fn _split_email(email: &str) -> Result<(String, String), PyErr> {
     let at_pos = email
         .rfind('@')
         .ok_or_else(|| SyntaxError::new_err("Invalid email: missing @"))?;
@@ -584,26 +425,17 @@ fn split_email(email: &str) -> Result<EmailParts, PyErr> {
     let local_part = &email[..at_pos];
     let domain_part = &email[at_pos + 1..];
 
-    if local_part.is_empty() || domain_part.is_empty() {
-        return Err(SyntaxError::new_err(
-            "Invalid email: local or domain part is empty",
-        ));
-    }
-
-    Ok(EmailParts {
-        local_part: local_part.to_string(),
-        domain: domain_part.to_string(),
-    })
+    Ok((local_part.to_string(), domain_part.to_string()))
 }
 
-fn validate_length(local_part: &str, domain: &str) -> Result<(), PyErr> {
+fn _validate_email_length(local_part: &str, domain: &str) -> Result<(), PyErr> {
     if local_part.len() + domain.len() + 1 > MAX_ADDRESS_LENGTH {
-        return Err(LengthError::new_err("The email is too long".to_string()));
+        return Err(LengthError::new_err("The email is too long"));
     }
     Ok(())
 }
 
-fn validate_chars(s: &str, allow_space: bool) -> Result<(), PyErr> {
+fn _validate_chars(s: &str, allow_space: bool) -> Result<(), PyErr> {
     let mut bad_chars = HashSet::new();
 
     for (i, c) in s.chars().enumerate() {
@@ -636,7 +468,7 @@ fn validate_chars(s: &str, allow_space: bool) -> Result<(), PyErr> {
     if !bad_chars.is_empty() {
         let bad_chars_str = bad_chars.into_iter().collect::<String>();
         return Err(SyntaxError::new_err(format!(
-            "The email address contains unsafe characters: {}.",
+            "The email address contains invalid characters: {}.",
             bad_chars_str
         )));
     }
@@ -645,7 +477,7 @@ fn validate_chars(s: &str, allow_space: bool) -> Result<(), PyErr> {
 }
 
 #[pymodule]
-fn emv(_py: Python, m: &Bound<PyModule>) -> PyResult<()> {
+fn _emv(_py: Python, m: &Bound<PyModule>) -> PyResult<()> {
     m.add_class::<EmailValidator>()?;
     m.add_class::<ValidatedEmail>()?;
 
@@ -666,13 +498,13 @@ mod tests {
 
     // Helper functions
     fn ipv4(octets: [u8; 4]) -> Option<IpAddr> {
-        Some(IpAddr::V4(Ipv4Addr::new(
+        Some(IpAddr::V4(std::net::Ipv4Addr::new(
             octets[0], octets[1], octets[2], octets[3],
         )))
     }
 
     fn ipv6(addr: &str) -> Option<IpAddr> {
-        Some(IpAddr::V6(Ipv6Addr::from_str(addr).unwrap()))
+        Some(IpAddr::V6(std::net::Ipv6Addr::from_str(addr).unwrap()))
     }
 
     #[rstest]
@@ -688,7 +520,7 @@ mod tests {
     )]
     fn test_validate_email_valid(#[case] email: &str, #[case] expected: Option<&str>) {
         let emv = EmailValidator::default();
-        let result = emv.email(email);
+        let result = emv.validate_email(email);
 
         match expected {
             Some(expected_normalized) => {
@@ -712,7 +544,7 @@ mod tests {
     #[case("too..many..dots@domain.com", None)]
     fn test_validate_email_invalid(#[case] email: &str, #[case] expected: Option<&str>) {
         let emv = EmailValidator::default();
-        let result = emv.email(email);
+        let result = emv.validate_email(email);
 
         match expected {
             Some(expected_normalized) => {
@@ -731,7 +563,7 @@ mod tests {
     #[case("NOT-POSTMASTER@example.com", Some("NOT-POSTMASTER@example.com"))]
     fn test_validate_email_case_insensitive(#[case] email: &str, #[case] expected: Option<&str>) {
         let emv = EmailValidator::default();
-        let result = emv.email(email);
+        let result = emv.validate_email(email);
 
         match expected {
             Some(expected_normalized) => {
@@ -758,7 +590,7 @@ mod tests {
     #[case("a.b.c.d.e.f.g.h.i.j.k.l.m.n.o.p.q.r.s.t.u.v.w.x.y.z.com")] // Long subdomain
     fn test_validate_domain_valid(#[case] domain: &str) {
         let emv = EmailValidator::default();
-        let result = emv.domain(domain);
+        let result = emv._validate_domain(domain);
 
         assert!(result.is_ok());
     }
@@ -783,7 +615,7 @@ mod tests {
     #[case("ex_ample.com")] // Underscore in domain
     fn test_validate_domain_invalid(#[case] domain: &str) {
         let emv = EmailValidator::default();
-        let result = emv.domain(domain);
+        let result = emv._validate_domain(domain);
 
         assert!(result.is_err());
     }
@@ -797,7 +629,7 @@ mod tests {
     #[case("me@test.test.test", false)]
     fn test_special_use_domains(#[case] domain: &str, #[case] expected: bool) {
         let emv = EmailValidator::default();
-        let result = emv.domain(domain);
+        let result = emv._validate_domain(domain);
 
         if expected {
             assert!(result.is_ok());
@@ -836,7 +668,7 @@ mod tests {
             ..EmailValidator::default()
         };
 
-        let result = emv.email(email);
+        let result = emv.validate_email(email);
         assert!(result.is_ok());
         let validated_email = result.unwrap();
         assert_eq!(validated_email.domain.name, expected_domain);
@@ -855,7 +687,7 @@ mod tests {
             ..EmailValidator::default()
         };
 
-        let result = emv.email(email);
+        let result = emv.validate_email(email);
         assert!(result.is_err());
     }
 
@@ -880,7 +712,7 @@ mod tests {
             ..EmailValidator::default()
         };
 
-        let result = emv.local_part(input);
+        let result = emv._validate_local_part(input);
 
         if let Some(expected_local) = expected {
             assert!(result.is_ok());
@@ -912,7 +744,7 @@ mod tests {
             ..EmailValidator::default()
         };
 
-        let result = emv.local_part(input);
+        let result = emv._validate_local_part(input);
 
         if let Some(expected_local) = expected {
             assert!(result.is_ok());
@@ -974,7 +806,7 @@ mod tests {
             ..EmailValidator::default()
         };
 
-        let result = emv.local_part(input);
+        let result = emv._validate_local_part(input);
 
         if let Some(expected_local) = expected {
             assert!(result.is_ok());
@@ -1001,7 +833,7 @@ mod tests {
     #[case("user=name", false)]
     #[case("user&name", false)]
     fn test_validate_chars_valid(#[case] input: &str, #[case] allow_space: bool) {
-        let result = validate_chars(input, allow_space);
+        let result = _validate_chars(input, allow_space);
 
         assert!(result.is_ok());
     }
@@ -1018,7 +850,7 @@ mod tests {
     #[case("\u{FEFF}", false)] // Unicode byte order mark
     #[case("user\u{FEFF}name", false)] // Unicode byte order mark in the middle
     fn test_validate_chars_invalid(#[case] input: &str, #[case] allow_space: bool) {
-        let result = validate_chars(input, allow_space);
+        let result = _validate_chars(input, allow_space);
 
         assert!(result.is_err());
     }
@@ -1033,7 +865,7 @@ mod tests {
         #[case] allow_space: bool,
         #[case] expected: bool,
     ) {
-        let result = validate_chars(input, allow_space);
+        let result = _validate_chars(input, allow_space);
 
         if expected {
             assert!(result.is_ok());
@@ -1051,20 +883,20 @@ mod tests {
     #[case("valid_email@sub.domain.com")] // Subdomain
     #[case("valid-email@domain.co.jp")] // Country code TLD
     #[case("invalid-email@domain..com")] // Double dot in domain
+    #[case("@missing-local.org")] // Can be missing Local
+    #[case("missing-domain@")] // Can be missing Domain
     fn test_split_email_valid(#[case] input: &str) {
-        let result = split_email(input);
+        let result = _split_email(input);
 
         assert!(result.is_ok());
     }
 
     #[rstest]
     #[case("plainaddress")]
-    #[case("@missing-local.org")]
-    #[case("missing-domain@")]
     #[case("missing-at-sign.com")]
     #[case("")]
     fn test_split_email_invalid(#[case] input: &str) {
-        let result = split_email(input);
+        let result = _split_email(input);
 
         assert!(result.is_err());
     }

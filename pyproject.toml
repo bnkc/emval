@@ -12,4 +12,5 @@ classifiers = [
 ]
 dynamic = ["version"]
 [tool.maturin]
+module-name = "emv._emv"
 features = ["pyo3/extension-module"]
