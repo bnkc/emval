@@ -2,7 +2,9 @@ import timeit
 import statistics
 import random
 import string
-from emv import EmailValidator
+
+# from emv import EmailValidator
+from emv import validate_email as levs_validate_email
 from email_validator import validate_email, EmailNotValidError, EmailUndeliverableError
 
 
@@ -56,19 +58,21 @@ valid_emails = [generate_random_email(valid=True) for _ in range(10)]
 invalid_emails = [generate_random_email(valid=False) for _ in range(10)]
 
 # Initialize your EmailValidator
-levs_validator = EmailValidator(allow_domain_literal=True)
+# levs_validator = EmailValidator(allow_domain_literal=True)
 
 
 # Define the test functions
 def test_levs_validator_valid():
     for email in valid_emails:
-        levs_validator.email(email)
+        # levs_validator.email(email)
+        levs_validate_email(email, allow_domain_literal=True)
 
 
 def test_levs_validator_invalid():
     for email in invalid_emails:
         try:
-            levs_validator.email(email)
+            # levs_validator.email(email)
+            levs_validate_email(email, allow_domain_literal=True)
         except Exception:
             pass
 
@@ -99,7 +103,7 @@ def run_benchmark(func, num_iterations):
 
 # Benchmarking
 if __name__ == "__main__":
-    num_iterations = 1000  # Number of iterations for benchmarking
+    num_iterations = 100  # Number of iterations for benchmarking
 
     # Benchmark your EmailValidator
     (
