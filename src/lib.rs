@@ -8,8 +8,8 @@ use std::usize;
 
 use idna::uts46::Uts46;
 use idna::uts46::{AsciiDenyList, DnsLength, Hyphens};
-use pyo3::exceptions::PyValueError;
-use pyo3::{create_exception, prelude::*};
+use pyo3::exceptions::{PySyntaxError, PyValueError};
+use pyo3::prelude::*;
 use regex::bytes::Regex;
 use unicode_properties::{GeneralCategoryGroup, UnicodeGeneralCategory};
 
@@ -61,10 +61,6 @@ const CASE_INSENSITIVE_MAILBOX_NAMES: &[&str] = &[
     "uucp",
     "ftp",
 ];
-
-create_exception!(emv, SyntaxError, PyValueError);
-create_exception!(emv, DomainLiteralError, PyValueError);
-create_exception!(emv, LengthError, PyValueError);
 
 #[derive(Clone)]
 #[pyclass]
@@ -152,7 +148,7 @@ impl EmailValidator {
             return if self.allow_empty_local {
                 Ok(local.to_string())
             } else {
-                Err(SyntaxError::new_err(
+                Err(PySyntaxError::new_err(
                     "There needs to be something before the @-sign",
                 ))
             };
@@ -163,7 +159,7 @@ impl EmailValidator {
 
         // Local part length validation
         if unquoted_local.len() > MAX_LOCAL_PART_LENGTH {
-            return Err(LengthError::new_err(
+            return Err(PyValueError::new_err(
                 "The email address is too long before the @-sign",
             ));
         }
@@ -176,7 +172,7 @@ impl EmailValidator {
         // Check for valid internationalized dot-atom text
         if DOT_ATOM_TEXT_INTL.is_match(unquoted_local.as_bytes()) {
             if !self.allow_smtputf8 {
-                return Err(SyntaxError::new_err(
+                return Err(PySyntaxError::new_err(
                     "Internationalized characters before the @-sign are not supported",
                 ));
             }
@@ -184,7 +180,7 @@ impl EmailValidator {
 
             // Check for valid UTF-8 encoding
             if String::from_utf8(unquoted_local.as_bytes().to_vec()).is_err() {
-                return Err(SyntaxError::new_err(
+                return Err(PySyntaxError::new_err(
                     "The email address contains an invalid character",
                 ));
             }
@@ -200,7 +196,7 @@ impl EmailValidator {
                 .collect();
 
             if !invalid_chars.is_empty() {
-                return Err(SyntaxError::new_err(
+                return Err(PySyntaxError::new_err(
                     "The email address contains invalid characters in quotes before the @-sign",
                 ));
             }
@@ -211,7 +207,7 @@ impl EmailValidator {
                 .collect();
 
             if !invalid_non_ascii_chars.is_empty() && !self.allow_smtputf8 {
-                return Err(SyntaxError::new_err(
+                return Err(PySyntaxError::new_err(
                     "Internationalized characters before the @-sign are not supported",
                 ));
             }
@@ -220,7 +216,7 @@ impl EmailValidator {
 
             // Check for valid UTF-8 encoding
             if String::from_utf8(local.as_bytes().to_vec()).is_err() {
-                return Err(SyntaxError::new_err(
+                return Err(PySyntaxError::new_err(
                     "The email address contains an invalid character",
                 ));
             }
@@ -235,7 +231,7 @@ impl EmailValidator {
             .collect();
 
         if !invalid_chars.is_empty() {
-            return Err(SyntaxError::new_err(
+            return Err(PySyntaxError::new_err(
                 "The email address contains invalid characters before the @-sign",
             ));
         }
@@ -245,11 +241,11 @@ impl EmailValidator {
             || unquoted_local.ends_with('.')
             || unquoted_local.contains("..")
         {
-            return Err(SyntaxError::new_err("The local part of the email address cannot start or end with a dot, or contain consecutive dots"));
+            return Err(PySyntaxError::new_err("The local part of the email address cannot start or end with a dot, or contain consecutive dots"));
         }
 
         // Fallback error for unhandled cases
-        Err(SyntaxError::new_err(
+        Err(PySyntaxError::new_err(
             "The email address contains invalid characters before the @-sign.",
         ))
     }
@@ -257,7 +253,7 @@ impl EmailValidator {
     fn _validate_domain(&self, domain: &str) -> PyResult<ValidatedDomain> {
         // Guard clause if domain is being executed independently
         if domain.is_empty() {
-            return Err(SyntaxError::new_err(
+            return Err(PySyntaxError::new_err(
                 "There needs to be something after the @",
             ));
         }
@@ -265,9 +261,7 @@ impl EmailValidator {
         // Address Literals
         if domain.starts_with('[') && domain.ends_with(']') {
             if !self.allow_domain_literal {
-                return Err(DomainLiteralError::new_err(
-                    "Domain Literals are not allowed",
-                ));
+                return Err(PyValueError::new_err("Domain Literals are not allowed"));
             }
 
             let domain_literal = &domain[1..domain.len() - 1];
@@ -276,7 +270,7 @@ impl EmailValidator {
             if domain_literal.starts_with("IPv6:") {
                 let ipv6_literal = &domain_literal[5..];
                 let addr = IpAddr::from_str(ipv6_literal).map_err(|_| {
-                    SyntaxError::new_err(
+                    PySyntaxError::new_err(
                         "The IPv6 address in brackets after the @-sign is not valid.",
                     )
                 })?;
@@ -290,7 +284,7 @@ impl EmailValidator {
 
             // Try to parse the domain literal as an IP address (either IPv4 or IPv6)
             let addr = IpAddr::from_str(domain_literal)
-                .map_err(|_| SyntaxError::new_err("Invalid domain literal"))?;
+                .map_err(|_| PySyntaxError::new_err("Invalid domain literal"))?;
 
             return Ok(ValidatedDomain {
                 name: match addr {
@@ -303,7 +297,7 @@ impl EmailValidator {
 
         // Check for invalid characters in the domain part
         if !ATEXT_HOSTNAME_INTL.is_match(domain.as_bytes()) {
-            return Err(SyntaxError::new_err(
+            return Err(PySyntaxError::new_err(
                 "The part after the @-sign contains invalid characters.",
             ));
         }
@@ -320,7 +314,7 @@ impl EmailValidator {
                 DnsLength::Verify,
             )
             .map_err(|err| {
-                SyntaxError::new_err(format!(
+                PySyntaxError::new_err(format!(
                     "The part after the @-sign contains invalid characters ({:?})",
                     err
                 ))
@@ -328,7 +322,7 @@ impl EmailValidator {
 
         // Check for invalid chars after normalization
         if !ATEXT_HOSTNAME_INTL.is_match(normalized_domain.as_bytes()) {
-            return Err(SyntaxError::new_err(
+            return Err(PySyntaxError::new_err(
                 "The part after the @-sign contains invalid characters.",
             ));
         }
@@ -338,7 +332,7 @@ impl EmailValidator {
             || normalized_domain.ends_with('.')
             || normalized_domain.contains("..")
         {
-            return Err(SyntaxError::new_err(
+            return Err(PySyntaxError::new_err(
                 "The email address cannot start or end with a dot, or contain consecutive dots",
             ));
         }
@@ -346,21 +340,21 @@ impl EmailValidator {
         // Check for invalid domain labels
         for label in normalized_domain.split('.') {
             if label.len() > MAX_DNS_LABEL_LENGTH {
-                return Err(LengthError::new_err("The DNS label is too long"));
+                return Err(PyValueError::new_err("The DNS label is too long"));
             }
             if label.starts_with('-') || label.ends_with('-') {
-                return Err(SyntaxError::new_err(
+                return Err(PySyntaxError::new_err(
                     "The DNS label cannot start or end with a hyphen",
                 ));
             }
             if label.is_empty() {
-                return Err(SyntaxError::new_err("The DNS label cannot be empty"));
+                return Err(PySyntaxError::new_err("The DNS label cannot be empty"));
             }
         }
 
         // Check the total length of the domain
         if normalized_domain.len() > MAX_DOMAIN_LENGTH {
-            return Err(LengthError::new_err("The domain is too long"));
+            return Err(PyValueError::new_err("The domain is too long"));
         }
 
         // Check for reserved and "special use" domains
@@ -368,7 +362,7 @@ impl EmailValidator {
             if normalized_domain == special_domain
                 || normalized_domain.ends_with(&format!(".{}", special_domain))
             {
-                return Err(SyntaxError::new_err(
+                return Err(PySyntaxError::new_err(
                 "The part after the @-sign is a special-use or reserved name that cannot be used with email.",
             ));
             }
@@ -385,7 +379,7 @@ fn _unquote_local_part(local: &str, allow_quoted: bool) -> Result<String, PyErr>
     if local.starts_with('"') && local.ends_with('"') {
         // Check that the quoted local part is allowed, otherwise raise exception
         if !allow_quoted {
-            return Err(SyntaxError::new_err(
+            return Err(PySyntaxError::new_err(
                 "Quoting the part before the @-sign is not allowed here.",
             ));
         }
@@ -406,7 +400,7 @@ fn _unquote_local_part(local: &str, allow_quoted: bool) -> Result<String, PyErr>
         }
 
         if escaped {
-            return Err(SyntaxError::new_err(
+            return Err(PySyntaxError::new_err(
                 "Trailing escape character in quoted local part",
             ));
         }
@@ -420,7 +414,7 @@ fn _unquote_local_part(local: &str, allow_quoted: bool) -> Result<String, PyErr>
 fn _split_email(email: &str) -> Result<(String, String), PyErr> {
     let at_pos = email
         .rfind('@')
-        .ok_or_else(|| SyntaxError::new_err("Invalid email: missing @"))?;
+        .ok_or_else(|| PySyntaxError::new_err("Invalid email: missing @"))?;
 
     let local_part = &email[..at_pos];
     let domain_part = &email[at_pos + 1..];
@@ -430,9 +424,33 @@ fn _split_email(email: &str) -> Result<(String, String), PyErr> {
 
 fn _validate_email_length(local_part: &str, domain: &str) -> Result<(), PyErr> {
     if local_part.len() + domain.len() + 1 > MAX_ADDRESS_LENGTH {
-        return Err(LengthError::new_err("The email is too long"));
+        return Err(PyValueError::new_err("The email is too long"));
     }
     Ok(())
+}
+
+fn _display_char(c: char) -> String {
+    // Return safely displayable characters in quotes.
+    if c == '\\' {
+        return format!("\"{}\"", c);
+    }
+    if c.is_alphanumeric() || c.is_ascii_punctuation() || c.is_ascii_whitespace() {
+        return format!("{:?}", c);
+    }
+
+    // Construct a hex string in case the unicode name doesn't exist.
+    let hex = if c as u32 <= 0xFFFF {
+        format!("U+{:04X}", c as u32)
+    } else {
+        format!("U+{:08X}", c as u32)
+    };
+
+    // Return the character name or, if it has no name, the hex string.
+    if let Some(name) = unicode_names2::name(c) {
+        name.to_string()
+    } else {
+        hex
+    }
 }
 
 fn _validate_chars(s: &str, allow_space: bool) -> Result<(), PyErr> {
@@ -466,8 +484,16 @@ fn _validate_chars(s: &str, allow_space: bool) -> Result<(), PyErr> {
     }
 
     if !bad_chars.is_empty() {
-        let bad_chars_str = bad_chars.into_iter().collect::<String>();
-        return Err(SyntaxError::new_err(format!(
+        let mut sorted_bad_chars: Vec<char> = bad_chars.iter().cloned().collect();
+        sorted_bad_chars.sort_unstable();
+
+        let bad_chars_str = sorted_bad_chars
+            .iter()
+            .map(|c| _display_char(*c))
+            .collect::<Vec<_>>()
+            .join(", ");
+
+        return Err(PySyntaxError::new_err(format!(
             "The email address contains invalid characters: {}.",
             bad_chars_str
         )));
@@ -481,12 +507,6 @@ fn _emv(_py: Python, m: &Bound<PyModule>) -> PyResult<()> {
     m.add_class::<EmailValidator>()?;
     m.add_class::<ValidatedEmail>()?;
 
-    m.add("SyntaxError", _py.get_type_bound::<SyntaxError>())?;
-    m.add(
-        "DomainLiteralError",
-        _py.get_type_bound::<DomainLiteralError>(),
-    )?;
-    m.add("LengthError", _py.get_type_bound::<LengthError>())?;
     Ok(())
 }
 

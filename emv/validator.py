@@ -1,14 +1,6 @@
 from typing import Union
 from .model import ValidatedEmail, ValidatedDomain
-from .error import EmvSyntaxError, EmvDomainLiteralError, EmvLengthError
 from emv import _emv
-
-
-EXCEPTIONS = {
-    _emv.SyntaxError: EmvSyntaxError,
-    _emv.DomainLiteralError: EmvDomainLiteralError,
-    _emv.LengthError: EmvLengthError,
-}
 
 
 class EmailValidator:
@@ -28,7 +20,7 @@ class EmailValidator:
             allow_quoted_local: Whether to allow quoted local part.
             allow_domain_literal: Whether to allow domain literals.
         """
-        self._validator = _emv.EmailValidator(
+        self._emv = _emv.EmailValidator(
             allow_smtputf8,
             allow_empty_local,
             allow_quoted_local,
@@ -50,20 +42,17 @@ class EmailValidator:
             DomainLiteralError: If domain literals are not allowed.
             LengthError: If the email length exceeds the maximum allowed length.
         """
-        try:
-            validated_email = self._validator.validate_email(email)
-            domain = ValidatedDomain(
-                address=validated_email.domain.address,
-                name=validated_email.domain.name,
-            )
-            return ValidatedEmail(
-                original=validated_email.original,
-                normalized=validated_email.normalized,
-                local_part=validated_email.local_part,
-                domain=domain,
-            )
-        except Exception as e:
-            raise EXCEPTIONS[type(e)](str(e))
+        validated_email = self._emv.validate_email(email)
+        domain = ValidatedDomain(
+            address=validated_email.domain.address,
+            name=validated_email.domain.name,
+        )
+        return ValidatedEmail(
+            original=validated_email.original,
+            normalized=validated_email.normalized,
+            local_part=validated_email.local_part,
+            domain=domain,
+        )
 
 
 def validate_email(
@@ -91,10 +80,10 @@ def validate_email(
         DomainLiteralError: If domain literals are not allowed.
         LengthError: If the email length exceeds the maximum allowed length.
     """
-    validator = EmailValidator(
+    emv = EmailValidator(
         allow_smtputf8,
         allow_empty_local,
         allow_quoted_local,
         allow_domain_literal,
     )
-    return validator.validate_email(email)
+    return emv.validate_email(email)
