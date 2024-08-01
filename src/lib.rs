@@ -90,6 +90,7 @@ struct EmailValidator {
     allow_empty_local: bool,
     allow_quoted_local: bool,
     allow_domain_literal: bool,
+    deliverable_address: bool,
 }
 
 #[pymethods]
@@ -99,19 +100,23 @@ impl EmailValidator {
         allow_smtputf8 = true,
         allow_empty_local = false,
         allow_quoted_local = false,
-        allow_domain_literal = false
+        allow_domain_literal = false,
+        deliverable_address = true,
+
     ))]
     fn new(
         allow_smtputf8: bool,
         allow_empty_local: bool,
         allow_quoted_local: bool,
         allow_domain_literal: bool,
+        deliverable_address: bool,
     ) -> Self {
         EmailValidator {
             allow_smtputf8,
             allow_empty_local,
             allow_quoted_local,
             allow_domain_literal,
+            deliverable_address,
         }
     }
 
@@ -313,28 +318,32 @@ impl EmailValidator {
                 Hyphens::Allow,
                 DnsLength::Verify,
             )
-            .map_err(|err| {
-                PySyntaxError::new_err(format!(
-                    "The part after the @-sign contains invalid characters ({:?})",
-                    err
-                ))
+            .map_err(|_| {
+                PySyntaxError::new_err(
+                    "Invalid Domain: Invalid characters after '@' sign post Unicode normalization.",
+                )
             })?;
 
         // Check for invalid chars after normalization
         if !ATEXT_HOSTNAME_INTL.is_match(normalized_domain.as_bytes()) {
             return Err(PySyntaxError::new_err(
-                "The part after the @-sign contains invalid characters.",
+                "Invalid Domain: Contains invalid characters after Unicode normalization.",
             ));
         }
 
-        // Check for dot errors
-        if normalized_domain.starts_with('.')
-            || normalized_domain.ends_with('.')
-            || normalized_domain.contains("..")
-        {
-            return Err(PySyntaxError::new_err(
-                "The email address cannot start or end with a dot, or contain consecutive dots",
-            ));
+        // Validates the domain part of an email address based on RFC 952, RFC 1123, and RFC 5322.
+        // Each label must have at least one character and cannot start or end with dashes or periods.
+        // Consecutive periods and adjacent period-hyphen combinations are also invalid.
+        _validate_email_domain_label(
+            &normalized_domain,
+            "Invalid Domain: A {} cannot immediately follow the '@' symbol.",
+            "Invalid Domain: A {} cannot appear at the end of the domain.",
+            true,
+        )?;
+
+        // Check the total length of the domain
+        if normalized_domain.len() > MAX_DOMAIN_LENGTH {
+            return Err(PyValueError::new_err("The domain is too long"));
         }
 
         // Check for invalid domain labels
@@ -342,19 +351,29 @@ impl EmailValidator {
             if label.len() > MAX_DNS_LABEL_LENGTH {
                 return Err(PyValueError::new_err("The DNS label is too long"));
             }
-            if label.starts_with('-') || label.ends_with('-') {
-                return Err(PySyntaxError::new_err(
-                    "The DNS label cannot start or end with a hyphen",
-                ));
-            }
+            // if label.starts_with('-') || label.ends_with('-') {
+            //     return Err(PySyntaxError::new_err(
+            //         "Invalid Domain: cannot start or end with a hyphen.",
+            //     ));
+            // }
             if label.is_empty() {
                 return Err(PySyntaxError::new_err("The DNS label cannot be empty"));
             }
         }
 
-        // Check the total length of the domain
-        if normalized_domain.len() > MAX_DOMAIN_LENGTH {
-            return Err(PyValueError::new_err("The domain is too long"));
+        if self.deliverable_address {
+            // Deliverable addresses must contain atleast one period.
+            if !normalized_domain.contains(".") {
+                return Err(PySyntaxError::new_err(
+                    "Invalid Domain: Must contain a period ('.') to be considered valid.",
+                ));
+            }
+
+            // if !DOMAIN_NAME_REGEX.is_match(normalized_domain.as_bytes()) {
+            //     return Err(PySyntaxError::new_err(
+            //         "The part after the @-sign is not valid",
+            //     ));
+            // }
         }
 
         // Check for reserved and "special use" domains
@@ -414,7 +433,7 @@ fn _unquote_local_part(local: &str, allow_quoted: bool) -> Result<String, PyErr>
 fn _split_email(email: &str) -> Result<(String, String), PyErr> {
     let at_pos = email
         .rfind('@')
-        .ok_or_else(|| PySyntaxError::new_err("Invalid email: missing @"))?;
+        .ok_or_else(|| PySyntaxError::new_err("Invalid Email Address: Missing an '@' symbol."))?;
 
     let local_part = &email[..at_pos];
     let domain_part = &email[at_pos + 1..];
@@ -426,6 +445,42 @@ fn _validate_email_length(local_part: &str, domain: &str) -> Result<(), PyErr> {
     if local_part.len() + domain.len() + 1 > MAX_ADDRESS_LENGTH {
         return Err(PyValueError::new_err("The email is too long"));
     }
+    Ok(())
+}
+
+fn _validate_email_domain_label(
+    label: &str,
+    beg_descr: &str,
+    end_descr: &str,
+    is_hostname: bool,
+) -> Result<(), PyErr> {
+    let errors = [
+        (label.ends_with('.'), end_descr.replace("{}", "period")),
+        (label.starts_with('.'), beg_descr.replace("{}", "period")),
+        (
+            label.contains(".."),
+            "An email address cannot have two periods in a row.".to_string(),
+        ),
+        (
+            is_hostname && label.ends_with('-'),
+            end_descr.replace("{}", "hyphen ('-')"),
+        ),
+        (
+            is_hostname && label.starts_with('-'),
+            beg_descr.replace("{}", "hyphen ('-')"),
+        ),
+        (
+            is_hostname && (label.contains("-.") || label.contains(".-")),
+            "Invalid Email Address: A period ('.') and a hyphen ('-') cannot be adjacent in the domain.".to_string(),
+        ),
+    ];
+
+    for (condition, error) in errors.iter() {
+        if *condition {
+            return Err(PySyntaxError::new_err(error.clone()));
+        }
+    }
+
     Ok(())
 }
 

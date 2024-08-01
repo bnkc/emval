@@ -103,7 +103,7 @@ def run_benchmark(func, num_iterations):
 
 # Benchmarking
 if __name__ == "__main__":
-    num_iterations = 100  # Number of iterations for benchmarking
+    num_iterations = 1000  # Number of iterations for benchmarking
 
     # Benchmark your EmailValidator
     (
