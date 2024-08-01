@@ -459,7 +459,7 @@ fn _validate_email_domain_label(
         (label.starts_with('.'), beg_descr.replace("{}", "period")),
         (
             label.contains(".."),
-            "An email address cannot have two periods in a row.".to_string(),
+            "Invalid Email Address: Two periods ('.') cannot be adjacent in the domain.".to_string(),
         ),
         (
             is_hostname && label.ends_with('-'),
