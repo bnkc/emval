@@ -10,6 +10,7 @@ class EmailValidator:
         allow_empty_local: bool = False,
         allow_quoted_local: bool = False,
         allow_domain_literal: bool = False,
+        deliverable_address: bool = True,
     ):
         """
         Initializes an EmailValidator object.
@@ -25,6 +26,7 @@ class EmailValidator:
             allow_empty_local,
             allow_quoted_local,
             allow_domain_literal,
+            deliverable_address,
         )
 
     def validate_email(self, email: Union[str, bytes]) -> ValidatedEmail:
@@ -61,6 +63,7 @@ def validate_email(
     allow_empty_local: bool = False,
     allow_quoted_local: bool = False,
     allow_domain_literal: bool = False,
+    deliverable_address: bool = True,
 ) -> ValidatedEmail:
     """
     Validates an email address with optional parameters.
@@ -85,5 +88,6 @@ def validate_email(
         allow_empty_local,
         allow_quoted_local,
         allow_domain_literal,
+        deliverable_address,
     )
     return emv.validate_email(email)
