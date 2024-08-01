@@ -74,6 +74,7 @@ def validate_email(
         allow_empty_local: Whether to allow empty local part.
         allow_quoted_local: Whether to allow quoted local part.
         allow_domain_literal: Whether to allow domain literals.
+        deliverable_address: Whether to check if the email address is deliverable.
 
     Returns:
         A ValidatedEmail instance if the email is valid.
