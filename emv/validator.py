@@ -69,15 +69,19 @@ def validate_email(
     Validates an email address with optional parameters.
 
     Args:
-        email: The email address to validate.
-        allow_smtputf8: Whether to allow SMTPUTF8.
-        allow_empty_local: Whether to allow empty local part.
-        allow_quoted_local: Whether to allow quoted local part.
-        allow_domain_literal: Whether to allow domain literals.
-        deliverable_address: Whether to check if the email address is deliverable.
+        email (Union[str, bytes]): The email address to validate.
+        allow_smtputf8 (bool): Whether to allow SMTPUTF8. Default is True.
+        allow_empty_local (bool): Whether to allow empty local part. \
+        Default is False.
+        allow_quoted_local (bool): Whether to allow quoted local part. \
+        Default is False.
+        allow_domain_literal (bool): Whether to allow domain literals. \
+        Default is False.
+        deliverable_address (bool): Whether to check if the email address is \
+        deliverable. Default is True.
 
     Returns:
-        A ValidatedEmail instance if the email is valid.
+        ValidatedEmail: An instance if the email is valid.
 
     Raises:
         SyntaxError: If the email syntax is invalid.
