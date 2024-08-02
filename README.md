@@ -4,7 +4,7 @@
 [![License](https://img.shields.io/pypi/l/emv.svg)](https://github.com/your-repo/emv/blob/main/LICENSE)
 [![Python Versions](https://img.shields.io/pypi/pyversions/emv.svg)](https://pypi.python.org/pypi/emv)
 [![CI](https://github.com/your-repo/emv/actions/workflows/ci.yml/badge.svg)](https://github.com/your-repo/emv/actions)
-[![Discord](https://img.shields.io/discord/your-discord-server-id.svg?label=chat&logo=discord&logoColor=white)](https://discord.com/invite/your-discord-invite)
+
 
 [**Docs**](https://docs.your-repo.com/emv/) | [**GitHub**](https://github.com/your-repo/emv)
 
