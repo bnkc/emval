@@ -4,6 +4,7 @@ from emv import validate_email
 
 
 # This is the python-email-validator (https://github.com/JoshData/python-email-validator/blob/main/tests/test_syntax.py) test suite.
+# testing
 
 
 @pytest.mark.parametrize(
