@@ -388,7 +388,7 @@ impl EmailValidator {
             // TLDs must end with a letter.
             if !DOMAIN_NAME_REGEX.is_match(normalized_domain.as_bytes()) {
                 return Err(PySyntaxError::new_err(
-                        "Invalid domain: The part after the '@' sign does not belong to a valid top-level domain (TLD).",
+                    "Invalid domain: The part after the '@' sign does not belong to a valid top-level domain (TLD).",
                 ));
             }
         }
