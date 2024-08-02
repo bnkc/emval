@@ -1,20 +1,49 @@
-# 📬 emv
+# Emv
 
-emv is a blazingly fast Python email validator written in Rust.
+[![EMV](https://img.shields.io/pypi/v/emv.svg)](https://pypi.python.org/pypi/emv)
+[![License](https://img.shields.io/pypi/l/emv.svg)](https://github.com/your-repo/emv/blob/main/LICENSE)
+[![Python Versions](https://img.shields.io/pypi/pyversions/emv.svg)](https://pypi.python.org/pypi/emv)
+[![CI](https://github.com/your-repo/emv/actions/workflows/ci.yml/badge.svg)](https://github.com/your-repo/emv/actions)
+[![Discord](https://img.shields.io/discord/your-discord-server-id.svg?label=chat&logo=discord&logoColor=white)](https://discord.com/invite/your-discord-invite)
 
-```python
-from emv import validate_email, EmailValidator
+[**Docs**](https://docs.your-repo.com/emv/) | [**GitHub**](https://github.com/your-repo/emv)
 
-email = "example@domain.com"
+EMV is a fast and robust email validation library for Python, utilizing a Rust backend to ensure optimal performance. This package is designed to enhance and speed up the functionality of the older `python-email-validator` library.
 
-try:
-    validated_email = validate_email(email)
-    print(validated_email)
-except Exception as e:
-    print(f"Validation error: {e}")
-```
+<p align="center">
+  <img src="https://your-image-url.com/benchmark.svg" alt="Benchmark Results">
+</p>
 
-## Installation
+<p align="center">
+  <i>Benchmark comparing EMV with other email validation libraries.</i>
+</p>
+
+- 🚀 Lightning-fast validation powered by Rust
+- 📦 Available on PyPI for easy installation
+- 🌐 Supports internationalized email addresses (IDN)
+- 🛠️ Configurable validation settings
+- 📜 Detailed error messages
+- 🔄 Normalizes email addresses
+- ✅ RFC 5322 and RFC 6531 compliance
+
+## Table of Contents
+
+1. [Getting Started](#getting-started)
+2. [Installation](#installation)
+3. [Usage](#usage)
+4. [Configuration](#configuration)
+5. [Technical Details](#technical-details)
+6. [Examples](#examples)
+7. [Contributing](#contributing)
+8. [Support](#support)
+9. [Acknowledgements](#acknowledgements)
+10. [License](#license)
+
+## Getting Started
+
+For comprehensive documentation, visit the [official docs](https://docs.your-repo.com/emv/).
+
+### Installation
 
 Install EMV from PyPI:
 
@@ -22,22 +51,12 @@ Install EMV from PyPI:
 pip install emv
 ```
 
-## Features
-
-- Validates email address syntax according to RFC 5322 and RFC 6531
-- Checks domain deliverability
-- Supports internationalized domain names (IDN) and local parts
-- Provides friendly error messages
-- Optimized for performance with Rust backend
-
-## Usage
-
-### Quick Start
+### Usage
 
 To validate an email address:
 
 ```python
-from emv import validate_email, EmailValidator
+from emv import validate_email
 
 email = "example@domain.com"
 
@@ -48,11 +67,13 @@ except Exception as e:
     print(f"Validation error: {e}")
 ```
 
-### Configurations
+## Configuration
 
 You can customize the email validation behavior using the `EmailValidator` class:
 
 ```python
+from emv import EmailValidator
+
 validator = EmailValidator(
     allow_smtputf8=True,
     allow_empty_local=False,
@@ -144,10 +165,28 @@ except Exception as e:
     print(f"Validation error: {e}")
 ```
 
-## Getting Help
+## Contributing
 
-For questions and issues, please open an issue in the [GitHub issue tracker](https://github.com/your-repo/emv/issues).
+Contributions are welcome and highly appreciated. To get started, check out the [**contributing guidelines**](https://github.com/your-repo/emv/blob/main/CONTRIBUTING.md).
+
+You can also join us on [**Discord**](https://discord.com/invite/your-discord-invite).
+
+## Support
+
+Having trouble? Check out the existing issues on [**GitHub**](https://github.com/your-repo/emv/issues), or feel free to [**open a new one**](https://github.com/your-repo/emv/issues/new).
+
+You can also ask for help on [**Discord**](https://discord.com/invite/your-discord-invite).
+
+## Acknowledgements
+
+EMV draws inspiration from the `python-email-validator` library and other email validation tools. We are grateful to the maintainers of these tools for their work and the value they provide to the Python community.
 
 ## License
 
-EMV is licensed under the [MIT License](https://opensource.org/licenses/MIT). See the [LICENSE](LICENSE) file for more details.
+This repository is licensed under the [MIT License](https://github.com/your-repo/emv/blob/main/LICENSE). See the [LICENSE](LICENSE) file for more details.
+
+<div align="center">
+  <a target="_blank" href="https://your-company.com" style="background:none">
+    <img src="https://your-image-url.com/your-logo.svg" alt="Made by Your Company">
+  </a>
+</div>
