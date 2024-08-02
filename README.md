@@ -1,6 +1,6 @@
 # 📬 emv
 
-EMV is a fast and robust email validation library designed to handle complex email validation needs with the backend written in Rust for enhanced performance. This package is an optimized version aimed at speeding up the older python-email-validator library.
+emv is a blazingly fast email validator written in Rust. 
 
 ```python
 from emv import validate_email, EmailValidator
