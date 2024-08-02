@@ -1,6 +1,6 @@
 # 📬 emv
 
-emv is a blazingly fast email validator written in Rust. 
+emv is a blazingly fast Python email validator written in Rust.
 
 ```python
 from emv import validate_email, EmailValidator
