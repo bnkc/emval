@@ -29,13 +29,14 @@ lazy_static! {
     static ref ATEXT_HOSTNAME_INTL: Regex = Regex::new(r"^[a-zA-Z0-9\-\.\u{0080}-\u{10FFFF}]+$").unwrap();
     static ref HOSTNAME_LABEL: &'static str = r"(?:(?:[a-zA-Z0-9][a-zA-Z0-9\-]*)?[a-zA-Z0-9])";
     static ref DOT_ATOM_TEXT_HOSTNAME: Regex = Regex::new(&format!(r"^{}(?:\.{})*$", *HOSTNAME_LABEL, *HOSTNAME_LABEL)).unwrap();
-    static ref DOMAIN_NAME_REGEX: Regex = Regex::new(r"[A-Za-z]\Z").unwrap();
+    static ref DOMAIN_NAME_REGEX: Regex = Regex::new(r"[A-Za-z]\z").unwrap();
 
     // Domain literal (RFC 5322 3.4.1)
     static ref DOMAIN_LITERAL_CHARS: Regex = Regex::new(r"[\u0021-\u00FA\u005E-\u007E]").unwrap();
 
     // See https://www.rfc-editor.org/rfc/rfc5321.html#section-4.1.2
     static ref QTEXT_INTL: Regex = Regex::new(r"[\u0020-\u007E\u0080-\u{10FFFF}]").unwrap();
+    static ref DNS_LABEL_REGEX: Regex = Regex::new(r"(?i)^.{2}--").unwrap();
 }
 
 const MAX_ADDRESS_LENGTH: usize = 254;
@@ -154,7 +155,7 @@ impl EmailValidator {
                 Ok(local.to_string())
             } else {
                 Err(PySyntaxError::new_err(
-                    "There needs to be something before the @-sign",
+                    "Invalid Local Part: The part before the '@' sign cannot be empty.",
                 ))
             };
         }
@@ -165,7 +166,7 @@ impl EmailValidator {
         // Local part length validation
         if unquoted_local.len() > MAX_LOCAL_PART_LENGTH {
             return Err(PyValueError::new_err(
-                "The email address is too long before the @-sign",
+                "Invalid Local Part: The part before the '@' sign exceeds the maximum length (64 chars).",
             ));
         }
 
@@ -237,21 +238,22 @@ impl EmailValidator {
 
         if !invalid_chars.is_empty() {
             return Err(PySyntaxError::new_err(
-                "The email address contains invalid characters before the @-sign",
+                "Invalid Local Part: contains invalid characters before the '@' sign.",
             ));
         }
 
-        // Check for dot errors
-        if unquoted_local.starts_with('.')
-            || unquoted_local.ends_with('.')
-            || unquoted_local.contains("..")
-        {
-            return Err(PySyntaxError::new_err("The local part of the email address cannot start or end with a dot, or contain consecutive dots"));
-        }
+        // Validates the local part of an email address based on RFC 952, RFC 1123, and RFC 5322.
+        // Each label must have at least one character and cannot start or end with dashes or periods.
+        // Consecutive periods and adjacent period-hyphen combinations are also invalid.
+        _validate_email_label(
+            local,
+            "Invalid Local Part: Cannot start with a {}.",
+            "Invalid Local Part: A {} cannot immediately precede the '@' sign.",
+            true,
+        )?;
 
-        // Fallback error for unhandled cases
         Err(PySyntaxError::new_err(
-            "The email address contains invalid characters before the @-sign.",
+            "Invalid Local Part: contains invalid characters before the '@' sign.",
         ))
     }
 
@@ -259,14 +261,16 @@ impl EmailValidator {
         // Guard clause if domain is being executed independently
         if domain.is_empty() {
             return Err(PySyntaxError::new_err(
-                "There needs to be something after the @",
+                "Invalid Domain: The part after the '@' sign cannot be empty.",
             ));
         }
 
         // Address Literals
         if domain.starts_with('[') && domain.ends_with(']') {
             if !self.allow_domain_literal {
-                return Err(PyValueError::new_err("Domain Literals are not allowed"));
+                return Err(PyValueError::new_err(
+                    "Invalid Domain: A bracketed IP address after the '@' sign is not permitted.",
+                ));
             }
 
             let domain_literal = &domain[1..domain.len() - 1];
@@ -303,7 +307,7 @@ impl EmailValidator {
         // Check for invalid characters in the domain part
         if !ATEXT_HOSTNAME_INTL.is_match(domain.as_bytes()) {
             return Err(PySyntaxError::new_err(
-                "The part after the @-sign contains invalid characters.",
+                "Invalid Domain: Contains invalid characters after '@' sign.",
             ));
         }
 
@@ -320,7 +324,7 @@ impl EmailValidator {
             )
             .map_err(|_| {
                 PySyntaxError::new_err(
-                    "Invalid Domain: Invalid characters after '@' sign post Unicode normalization.",
+                    "Invalid Domain: Contains invalid characters after '@' sign post Unicode normalization.",
                 )
             })?;
 
@@ -334,7 +338,7 @@ impl EmailValidator {
         // Validates the domain part of an email address based on RFC 952, RFC 1123, and RFC 5322.
         // Each label must have at least one character and cannot start or end with dashes or periods.
         // Consecutive periods and adjacent period-hyphen combinations are also invalid.
-        _validate_email_domain_label(
+        _validate_email_label(
             &normalized_domain,
             "Invalid Domain: A {} cannot immediately follow the '@' symbol.",
             "Invalid Domain: A {} cannot appear at the end of the domain.",
@@ -351,13 +355,18 @@ impl EmailValidator {
             if label.len() > MAX_DNS_LABEL_LENGTH {
                 return Err(PyValueError::new_err("The DNS label is too long"));
             }
-            // if label.starts_with('-') || label.ends_with('-') {
-            //     return Err(PySyntaxError::new_err(
-            //         "Invalid Domain: cannot start or end with a hyphen.",
-            //     ));
-            // }
+
             if label.is_empty() {
                 return Err(PySyntaxError::new_err("The DNS label cannot be empty"));
+            }
+
+            // Check for two letters followed by two dashes
+            if DNS_LABEL_REGEX.is_match(label.as_bytes())
+                && !label.to_lowercase().starts_with("xn--")
+            {
+                return Err(PySyntaxError::new_err(
+                     "Invalid Domain: Two letters followed by two dashes ('--') are not allowed immediately after the '@' sign or a period.",
+             ));
             }
         }
 
@@ -369,11 +378,13 @@ impl EmailValidator {
                 ));
             }
 
-            // if !DOMAIN_NAME_REGEX.is_match(normalized_domain.as_bytes()) {
-            //     return Err(PySyntaxError::new_err(
-            //         "The part after the @-sign is not valid",
-            //     ));
-            // }
+            // TLDs must end with a letter.
+            if !DOMAIN_NAME_REGEX.is_match(normalized_domain.as_bytes()) {
+                return Err(PySyntaxError::new_err(
+                     // "The part after the @-sign is not valid. It is not within a valid top-level domain.",
+                        "Invalid domain: The part after the '@' sign does not belong to a valid top-level domain (TLD).",
+                ));
+            }
         }
 
         // Check for reserved and "special use" domains
@@ -443,12 +454,14 @@ fn _split_email(email: &str) -> Result<(String, String), PyErr> {
 
 fn _validate_email_length(local_part: &str, domain: &str) -> Result<(), PyErr> {
     if local_part.len() + domain.len() + 1 > MAX_ADDRESS_LENGTH {
-        return Err(PyValueError::new_err("The email is too long"));
+        return Err(PyValueError::new_err(
+            "Invalid Email Address: The email exceeds the maximum length (254 chars).",
+        ));
     }
     Ok(())
 }
 
-fn _validate_email_domain_label(
+fn _validate_email_label(
     label: &str,
     beg_descr: &str,
     end_descr: &str,
