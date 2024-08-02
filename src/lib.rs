@@ -179,7 +179,7 @@ impl EmailValidator {
         if DOT_ATOM_TEXT_INTL.is_match(unquoted_local.as_bytes()) {
             if !self.allow_smtputf8 {
                 return Err(PySyntaxError::new_err(
-                    "Internationalized characters before the @-sign are not supported",
+                        "Invalid Local Part: Internationalized characters before the '@' sign are not supported.",
                 ));
             }
             _validate_chars(&unquoted_local, false)?;
@@ -187,7 +187,7 @@ impl EmailValidator {
             // Check for valid UTF-8 encoding
             if String::from_utf8(unquoted_local.as_bytes().to_vec()).is_err() {
                 return Err(PySyntaxError::new_err(
-                    "The email address contains an invalid character",
+                    "Invalid Local Part: Contains non-UTF-8 characters.",
                 ));
             }
 
@@ -203,7 +203,7 @@ impl EmailValidator {
 
             if !invalid_chars.is_empty() {
                 return Err(PySyntaxError::new_err(
-                    "The email address contains invalid characters in quotes before the @-sign",
+                        "Invalid Local Part: contains invalid characters within quoted local part before the '@' sign.",
                 ));
             }
 
@@ -214,7 +214,7 @@ impl EmailValidator {
 
             if !invalid_non_ascii_chars.is_empty() && !self.allow_smtputf8 {
                 return Err(PySyntaxError::new_err(
-                    "Internationalized characters before the @-sign are not supported",
+                        "Invalid Local Part: Internationalized characters before the '@' sign are not supported."
                 ));
             }
 
@@ -223,7 +223,7 @@ impl EmailValidator {
             // Check for valid UTF-8 encoding
             if String::from_utf8(local.as_bytes().to_vec()).is_err() {
                 return Err(PySyntaxError::new_err(
-                    "The email address contains an invalid character",
+                    "Invalid Local Part: Contains non-UTF-8 characters.",
                 ));
             }
 
@@ -280,7 +280,7 @@ impl EmailValidator {
                 let ipv6_literal = &domain_literal[5..];
                 let addr = IpAddr::from_str(ipv6_literal).map_err(|_| {
                     PySyntaxError::new_err(
-                        "The IPv6 address in brackets after the @-sign is not valid.",
+                        "Invalid Domain: The IPv6 address in brackets following the '@' symbol is not valid.",
                     )
                 })?;
                 if let IpAddr::V6(addr) = addr {
@@ -292,8 +292,9 @@ impl EmailValidator {
             }
 
             // Try to parse the domain literal as an IP address (either IPv4 or IPv6)
-            let addr = IpAddr::from_str(domain_literal)
-                .map_err(|_| PySyntaxError::new_err("Invalid domain literal"))?;
+            let addr = IpAddr::from_str(domain_literal).map_err(|_| {
+                 PySyntaxError::new_err("Invalid Domain: The address in brackets following the '@' sign is not a valid IP address.")
+            })?;
 
             return Ok(ValidatedDomain {
                 name: match addr {
@@ -347,17 +348,23 @@ impl EmailValidator {
 
         // Check the total length of the domain
         if normalized_domain.len() > MAX_DOMAIN_LENGTH {
-            return Err(PyValueError::new_err("The domain is too long"));
+            return Err(PyValueError::new_err(
+                "Invalid Domain: Exceeds the maximum length (253 chars).",
+            ));
         }
 
         // Check for invalid domain labels
         for label in normalized_domain.split('.') {
             if label.len() > MAX_DNS_LABEL_LENGTH {
-                return Err(PyValueError::new_err("The DNS label is too long"));
+                return Err(PyValueError::new_err(
+                    "Invalid Label: Exceeds the maximum length (63 chars).",
+                ));
             }
 
             if label.is_empty() {
-                return Err(PySyntaxError::new_err("The DNS label cannot be empty"));
+                return Err(PySyntaxError::new_err(
+                    "Invalid Label: The Label cannot be empty.",
+                ));
             }
 
             // Check for two letters followed by two dashes
@@ -381,7 +388,6 @@ impl EmailValidator {
             // TLDs must end with a letter.
             if !DOMAIN_NAME_REGEX.is_match(normalized_domain.as_bytes()) {
                 return Err(PySyntaxError::new_err(
-                     // "The part after the @-sign is not valid. It is not within a valid top-level domain.",
                         "Invalid domain: The part after the '@' sign does not belong to a valid top-level domain (TLD).",
                 ));
             }
@@ -393,7 +399,7 @@ impl EmailValidator {
                 || normalized_domain.ends_with(&format!(".{}", special_domain))
             {
                 return Err(PySyntaxError::new_err(
-                "The part after the @-sign is a special-use or reserved name that cannot be used with email.",
+                    "Invalid Domain: The part after the '@' sign is a reserved or special-use domain that cannot be used.",
             ));
             }
         }
@@ -410,7 +416,7 @@ fn _unquote_local_part(local: &str, allow_quoted: bool) -> Result<String, PyErr>
         // Check that the quoted local part is allowed, otherwise raise exception
         if !allow_quoted {
             return Err(PySyntaxError::new_err(
-                "Quoting the part before the @-sign is not allowed here.",
+            "Invalid Local Part: Quoting the local part before the '@' sign is not permitted in this context.",
             ));
         }
 
@@ -431,7 +437,7 @@ fn _unquote_local_part(local: &str, allow_quoted: bool) -> Result<String, PyErr>
 
         if escaped {
             return Err(PySyntaxError::new_err(
-                "Trailing escape character in quoted local part",
+                    "Invalid Local Part: Trailing escape character in the quoted local part before the '@' sign.",
             ));
         }
 
@@ -444,7 +450,7 @@ fn _unquote_local_part(local: &str, allow_quoted: bool) -> Result<String, PyErr>
 fn _split_email(email: &str) -> Result<(String, String), PyErr> {
     let at_pos = email
         .rfind('@')
-        .ok_or_else(|| PySyntaxError::new_err("Invalid Email Address: Missing an '@' symbol."))?;
+        .ok_or_else(|| PySyntaxError::new_err("Invalid Email Address: Missing an '@' sign."))?;
 
     let local_part = &email[..at_pos];
     let domain_part = &email[at_pos + 1..];
@@ -472,7 +478,7 @@ fn _validate_email_label(
         (label.starts_with('.'), beg_descr.replace("{}", "period")),
         (
             label.contains(".."),
-            "Invalid Email Address: Two periods ('.') cannot be adjacent in the domain.".to_string(),
+            "Invalid Email Address: Two periods ('.') cannot be adjacent in the email address.".to_string(),
         ),
         (
             is_hostname && label.ends_with('-'),
@@ -484,7 +490,7 @@ fn _validate_email_label(
         ),
         (
             is_hostname && (label.contains("-.") || label.contains(".-")),
-            "Invalid Email Address: A period ('.') and a hyphen ('-') cannot be adjacent in the domain.".to_string(),
+            "Invalid Email Address: A period ('.') and a hyphen ('-') cannot be adjacent in the email address.".to_string(),
         ),
     ];
 
@@ -521,10 +527,10 @@ fn _display_char(c: char) -> String {
     }
 }
 
-fn _validate_chars(s: &str, allow_space: bool) -> Result<(), PyErr> {
+fn _validate_chars(chars: &str, allow_space: bool) -> Result<(), PyErr> {
     let mut bad_chars = HashSet::new();
 
-    for (i, c) in s.chars().enumerate() {
+    for (i, c) in chars.chars().enumerate() {
         let group = c.general_category_group();
         match group {
             GeneralCategoryGroup::Letter
@@ -562,7 +568,7 @@ fn _validate_chars(s: &str, allow_space: bool) -> Result<(), PyErr> {
             .join(", ");
 
         return Err(PySyntaxError::new_err(format!(
-            "The email address contains invalid characters: {}.",
+            "Invalid Email Address: contains invalid characters: {}.",
             bad_chars_str
         )));
     }

@@ -31,19 +31,16 @@ from emv import validate_email
 def test_email_valid_only_if_quoted_local_part(
     email_input: str, normalized_local_part: str
 ) -> None:
-    # These addresses are invalid with the default allow_quoted_local=False option.
     with pytest.raises(SyntaxError) as exc_info:
         validate_email(email_input)
 
     assert (
-        str(exc_info.value) == "Quoting the part before the @-sign is not allowed here."
+        str(exc_info.value)
+        == "Invalid Local Part: Quoting the local part before the '@' sign is not permitted in this context."
     )
 
-    # But they are valid if quoting is allowed.
     validated = validate_email(email_input, allow_quoted_local=True)
 
-    # Check that the normalized form correctly removed unnecessary backslash escaping
-    # and even the quoting if they weren't necessary.
     assert validated.local_part == normalized_local_part
 
 
@@ -69,7 +66,7 @@ def test_domain_literal() -> None:
 @pytest.mark.parametrize(
     "email_input,error_msg",
     [
-        ("hello.world", "Invalid Email Address: Missing an '@' symbol."),
+        ("hello.world", "Invalid Email Address: Missing an '@' sign."),
         (
             "my@localhost",
             "Invalid Domain: Must contain a period ('.') to be considered valid.",
@@ -104,27 +101,27 @@ def test_domain_literal() -> None:
         ),
         (
             "my@baddash.-.com",
-            "Invalid Email Address: A period ('.') and a hyphen ('-') cannot be adjacent in the domain.",
+            "Invalid Email Address: A period ('.') and a hyphen ('-') cannot be adjacent in the email address.",
         ),
         (
             "my@baddash.-a.com",
-            "Invalid Email Address: A period ('.') and a hyphen ('-') cannot be adjacent in the domain.",
+            "Invalid Email Address: A period ('.') and a hyphen ('-') cannot be adjacent in the email address.",
         ),
         (
             "my@baddash.b-.com",
-            "Invalid Email Address: A period ('.') and a hyphen ('-') cannot be adjacent in the domain.",
+            "Invalid Email Address: A period ('.') and a hyphen ('-') cannot be adjacent in the email address.",
         ),
         (
             "my@baddashfw.－.com",
-            "Invalid Email Address: A period ('.') and a hyphen ('-') cannot be adjacent in the domain.",
+            "Invalid Email Address: A period ('.') and a hyphen ('-') cannot be adjacent in the email address.",
         ),
         (
             "my@baddashfw.－a.com",
-            "Invalid Email Address: A period ('.') and a hyphen ('-') cannot be adjacent in the domain.",
+            "Invalid Email Address: A period ('.') and a hyphen ('-') cannot be adjacent in the email address.",
         ),
         (
             "my@baddashfw.b－.com",
-            "Invalid Email Address: A period ('.') and a hyphen ('-') cannot be adjacent in the domain.",
+            "Invalid Email Address: A period ('.') and a hyphen ('-') cannot be adjacent in the email address.",
         ),
         (
             "my@example.com\n",
@@ -145,7 +142,7 @@ def test_domain_literal() -> None:
         (".leadingdot@domain.com", "Invalid Local Part: Cannot start with a period."),
         (
             "twodots..here@domain.com",
-            "Invalid Email Address: Two periods ('.') cannot be adjacent in the domain.",
+            "Invalid Email Address: Two periods ('.') cannot be adjacent in the email address.",
         ),
         (
             "trailingdot.@domain.email",
@@ -293,33 +290,25 @@ def test_domain_literal() -> None:
             "Invalid Domain: Two letters followed by two dashes ('--') are not allowed immediately after the '@' sign or a period.",
         ),
         (
-            "me@[127.0.0.1]",
-            "Invalid Domain: A bracketed IP address after the '@' sign is not permitted.",
+            "me@[127.0.0.999]",
+            "Invalid Domain: The address in brackets following the '@' sign is not a valid IP address.",
         ),
-        # (
-        #     "me@[127.0.0.999]",
-        #     "The address in brackets after the @-sign is not valid: It is not an IPv4 address (Octet 999 (> 255) not permitted in '127.0.0.999') or is missing an address literal tag.",
-        # ),
-        # (
-        #     "me@[IPv6:::1]",
-        #     "A bracketed IP address after the @-sign is not allowed here.",
-        # ),
-        # (
-        #     "me@[IPv6:::G]",
-        #     "The IPv6 address in brackets after the @-sign is not valid (Only hex digits permitted in 'G' in '::G').",
-        # ),
-        # (
-        #     "me@[tag:text]",
-        #     "The part after the @-sign contains an invalid address literal tag in brackets.",
-        # ),
-        # (
-        #     "me@[untaggedtext]",
-        #     "The part after the @-sign in brackets is not an IPv4 address and has no address literal tag.",
-        # ),
-        # (
-        #     "me@[tag:invalid space]",
-        #     "The part after the @-sign contains invalid characters in brackets: SPACE.",
-        # ),
+        (
+            "me@[IPv6:::G]",
+            "Invalid Domain: The IPv6 address in brackets following the '@' symbol is not valid.",
+        ),
+        (
+            "me@[tag:text]",
+            "Invalid Domain: The address in brackets following the '@' sign is not a valid IP address.",
+        ),
+        (
+            "me@[untaggedtext]",
+            "Invalid Domain: The address in brackets following the '@' sign is not a valid IP address.",
+        ),
+        (
+            "me@[tag:invalid space]",
+            "Invalid Domain: The address in brackets following the '@' sign is not a valid IP address.",
+        ),
         # (
         #     "<me@example.com>",
         #     "A display name and angle brackets around the email address are not permitted here.",
@@ -329,14 +318,14 @@ def test_domain_literal() -> None:
         #     "An open angle bracket at the start of the email address has to be followed by a close angle bracket at the end.",
         # ),
         # ("<me@example.com> !", "There can't be anything after the email address."),
-        # (
-        #     "<\u0338me@example.com",
-        #     "The email address contains invalid characters before the @-sign: '<'.",
-        # ),
-        # (
-        #     "DisplayName <me@-example.com>",
-        #     "An email address cannot have a hyphen immediately after the @-sign.",
-        # ),
+        (
+            "<\u0338me@example.com",
+            "Invalid Local Part: contains invalid characters before the '@' sign.",
+        ),
+        (
+            "DisplayName <me@-example.com>",
+            "Invalid Local Part: contains invalid characters before the '@' sign.",
+        ),
         # (
         #     "DisplayName <me@example.com>",
         #     "A display name and angle brackets around the email address are not permitted here.",
@@ -361,7 +350,7 @@ def test_domain_literal() -> None:
 )
 def test_email_invalid_syntax(email_input: str, error_msg: str) -> None:
     with pytest.raises((SyntaxError, ValueError)) as exc_info:
-        validate_email(email_input, allow_smtputf8=True)
+        validate_email(email_input, allow_smtputf8=True, allow_domain_literal=True)
     assert str(exc_info.value) == error_msg
 
 
@@ -377,11 +366,12 @@ def test_email_invalid_syntax(email_input: str, error_msg: str) -> None:
     ],
 )
 def test_email_invalid_reserved_domain(email_input: str) -> None:
-    # Since these all fail deliverabiltiy from a static list,
-    # DNS deliverability checks do not arise.
     with pytest.raises(SyntaxError) as exc_info:
         validate_email(email_input)
-    assert "is a special-use or reserved name" in str(exc_info.value)
+    assert (
+        "Invalid Domain: The part after the '@' sign is a reserved or special-use domain that cannot be used."
+        in str(exc_info.value)
+    )
 
 
 @pytest.mark.parametrize(
@@ -403,19 +393,16 @@ def test_email_invalid_reserved_domain(email_input: str) -> None:
     ],
 )
 def test_email_unsafe_character(s: str, expected_error: str) -> None:
-    # Check for various unsafe characters that are permitted by the email
-    # specs but should be disallowed for being unsafe or not sensible Unicode.
-
     with pytest.raises(SyntaxError) as exc_info:
         validate_email(s + "@test")
     assert (
         str(exc_info.value)
-        == f"The email address contains invalid characters: {expected_error}."
+        == f"Invalid Email Address: contains invalid characters: {expected_error}."
     )
 
     with pytest.raises(SyntaxError) as exc_info:
         validate_email("test@" + s)
-    assert "The email address contains invalid characters" in str(exc_info.value)
+    assert "Invalid Email Address: contains invalid characters:" in str(exc_info.value)
 
 
 @pytest.mark.parametrize(
@@ -423,18 +410,17 @@ def test_email_unsafe_character(s: str, expected_error: str) -> None:
     [
         (
             "λambdaツ@test",
-            "Internationalized characters before the @-sign are not supported",
+            "Invalid Local Part: Internationalized characters before the '@' sign are not supported.",
         ),
         (
             '"quoted.with..unicode.λ"@example.com',
-            "Internationalized characters before the @-sign are not supported",
+            "Invalid Local Part: Internationalized characters before the '@' sign are not supported.",
         ),
     ],
 )
 def test_email_invalid_character_smtputf8_off(
     email_input: str, expected_error: str
 ) -> None:
-    # Check that internationalized characters are rejected if allow_smtputf8=False.
     with pytest.raises(SyntaxError) as exc_info:
         validate_email(email_input, allow_smtputf8=False, allow_quoted_local=True)
     assert str(exc_info.value) == expected_error
@@ -442,8 +428,6 @@ def test_email_invalid_character_smtputf8_off(
 
 def test_email_empty_local() -> None:
     validate_email("@example.com", allow_empty_local=True)
-
-    # This next one might not be desirable.
     validate_email('""@example.com', allow_empty_local=True, allow_quoted_local=True)
 
 
