@@ -16,7 +16,7 @@ except Exception as e:
 
 ## Installation
 
-Install EMV from PyPI:
+Install emv from PyPI:
 
 ```sh
 pip install emv
@@ -53,7 +53,7 @@ except Exception as e:
 You can customize the email validation behavior using the `EmailValidator` class:
 
 ```python
-validator = EmailValidator(
+emv = EmailValidator(
     allow_smtputf8=True,
     allow_empty_local=False,
     allow_quoted_local=False,
@@ -64,7 +64,7 @@ validator = EmailValidator(
 email = "example@domain.com"
 
 try:
-    validated_email = validator.validate_email(email)
+    validated_email = emv.validate_email(email)
     print(validated_email)
 except Exception as e:
     print(f"Validation error: {e}")
@@ -113,7 +113,7 @@ except Exception as e:
 ```python
 from emv import EmailValidator
 
-validator = EmailValidator(
+emv = EmailValidator(
     allow_smtputf8=False,
     allow_empty_local=True,
     allow_quoted_local=True,
@@ -124,7 +124,7 @@ validator = EmailValidator(
 email = "user@[192.168.1.1]"
 
 try:
-    validated_email = validator.validate_email(email)
+    validated_email = emv.validate_email(email)
     print(validated_email)
 except Exception as e:
     print(f"Validation error: {e}")

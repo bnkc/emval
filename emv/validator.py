@@ -1,9 +1,20 @@
 from typing import Union
-from .model import ValidatedEmail, ValidatedDomain
+from .model import ValidatedEmail
 from emv import _emv
 
 
 class EmailValidator:
+    """
+    Initializes an EmailValidator object.
+
+    Args:
+        allow_smtputf8: Whether to allow SMTPUTF8.
+        allow_empty_local: Whether to allow empty local part.
+        allow_quoted_local: Whether to allow quoted local part.
+        allow_domain_literal: Whether to allow domain literals.
+        deliverable_address: Whether to check if the email address is deliverable.
+    """
+
     def __init__(
         self,
         allow_smtputf8: bool = True,
@@ -12,16 +23,6 @@ class EmailValidator:
         allow_domain_literal: bool = False,
         deliverable_address: bool = True,
     ):
-        """
-        Initializes an EmailValidator object.
-
-        Args:
-            allow_smtputf8: Whether to allow SMTPUTF8.
-            allow_empty_local: Whether to allow empty local part.
-            allow_quoted_local: Whether to allow quoted local part.
-            allow_domain_literal: Whether to allow domain literals.
-            deliverable_address: Whether to check if the email address is deliverable.
-        """
         self._emv = _emv.EmailValidator(
             allow_smtputf8,
             allow_empty_local,
@@ -46,15 +47,12 @@ class EmailValidator:
             LengthError: If the email length exceeds the maximum allowed length.
         """
         validated_email = self._emv.validate_email(email)
-        domain = ValidatedDomain(
-            address=validated_email.domain.address,
-            name=validated_email.domain.name,
-        )
         return ValidatedEmail(
             original=validated_email.original,
             normalized=validated_email.normalized,
             local_part=validated_email.local_part,
-            domain=domain,
+            domain_name=validated_email.domain_name,
+            domain_address=validated_email.domain_address,
         )
 
 
@@ -83,11 +81,6 @@ def validate_email(
 
     Returns:
         ValidatedEmail: An instance if the email is valid.
-
-    Raises:
-        SyntaxError: If the email syntax is invalid.
-        DomainLiteralError: If domain literals are not allowed.
-        LengthError: If the email length exceeds the maximum allowed length.
     """
     emv = EmailValidator(
         allow_smtputf8,

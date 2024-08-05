@@ -1,10 +1,164 @@
-from typing import Any
 import pytest
-from emv import validate_email
+from emv import validate_email, ValidatedEmail
 
 
 # This is the python-email-validator (https://github.com/JoshData/python-email-validator/blob/main/tests/test_syntax.py) test suite.
 # testing
+
+
+@pytest.mark.parametrize(
+    "email_input,output",
+    [
+        (
+            "Abc@example.tld",
+            ValidatedEmail(
+                local_part="Abc",
+                # ascii_local_part="Abc",
+                # smtputf8=False,
+                # ascii_domain="example.tld",
+                domain_name="example.tld",
+                normalized="Abc@example.tld",
+                original="Abc@example.tld",
+                # ascii_email="Abc@example.tld",
+            ),
+        ),
+        # (
+        #     "Abc.123@test-example.com",
+        #     MakeValidatedEmail(
+        #         local_part="Abc.123",
+        #         ascii_local_part="Abc.123",
+        #         smtputf8=False,
+        #         ascii_domain="test-example.com",
+        #         domain="test-example.com",
+        #         normalized="Abc.123@test-example.com",
+        #         ascii_email="Abc.123@test-example.com",
+        #     ),
+        # ),
+        # (
+        #     "user+mailbox/department=shipping@example.tld",
+        #     MakeValidatedEmail(
+        #         local_part="user+mailbox/department=shipping",
+        #         ascii_local_part="user+mailbox/department=shipping",
+        #         smtputf8=False,
+        #         ascii_domain="example.tld",
+        #         domain="example.tld",
+        #         normalized="user+mailbox/department=shipping@example.tld",
+        #         ascii_email="user+mailbox/department=shipping@example.tld",
+        #     ),
+        # ),
+        # (
+        #     "!#$%&'*+-/=?^_`.{|}~@example.tld",
+        #     MakeValidatedEmail(
+        #         local_part="!#$%&'*+-/=?^_`.{|}~",
+        #         ascii_local_part="!#$%&'*+-/=?^_`.{|}~",
+        #         smtputf8=False,
+        #         ascii_domain="example.tld",
+        #         domain="example.tld",
+        #         normalized="!#$%&'*+-/=?^_`.{|}~@example.tld",
+        #         ascii_email="!#$%&'*+-/=?^_`.{|}~@example.tld",
+        #     ),
+        # ),
+        # (
+        #     "jeff@臺網中心.tw",
+        #     MakeValidatedEmail(
+        #         local_part="jeff",
+        #         ascii_local_part="jeff",
+        #         smtputf8=False,
+        #         ascii_domain="xn--fiqq24b10vi0d.tw",
+        #         domain="臺網中心.tw",
+        #         normalized="jeff@臺網中心.tw",
+        #         ascii_email="jeff@xn--fiqq24b10vi0d.tw",
+        #     ),
+        # ),
+        # (
+        #     '"quoted local part"@example.org',
+        #     MakeValidatedEmail(
+        #         local_part='"quoted local part"',
+        #         ascii_local_part='"quoted local part"',
+        #         smtputf8=False,
+        #         ascii_domain="example.org",
+        #         domain="example.org",
+        #         normalized='"quoted local part"@example.org',
+        #         ascii_email='"quoted local part"@example.org',
+        #     ),
+        # ),
+        # (
+        #     '"de-quoted.local.part"@example.org',
+        #     MakeValidatedEmail(
+        #         local_part="de-quoted.local.part",
+        #         ascii_local_part="de-quoted.local.part",
+        #         smtputf8=False,
+        #         ascii_domain="example.org",
+        #         domain="example.org",
+        #         normalized="de-quoted.local.part@example.org",
+        #         ascii_email="de-quoted.local.part@example.org",
+        #     ),
+        # ),
+        # (
+        #     "MyName <me@example.org>",
+        #     MakeValidatedEmail(
+        #         local_part="me",
+        #         ascii_local_part="me",
+        #         smtputf8=False,
+        #         ascii_domain="example.org",
+        #         domain="example.org",
+        #         normalized="me@example.org",
+        #         ascii_email="me@example.org",
+        #         display_name="MyName",
+        #     ),
+        # ),
+        # (
+        #     "My Name <me@example.org>",
+        #     MakeValidatedEmail(
+        #         local_part="me",
+        #         ascii_local_part="me",
+        #         smtputf8=False,
+        #         ascii_domain="example.org",
+        #         domain="example.org",
+        #         normalized="me@example.org",
+        #         ascii_email="me@example.org",
+        #         display_name="My Name",
+        #     ),
+        # ),
+        # (
+        #     r'"My.\"Na\\me\".Is" <"me \" \\ me"@example.org>',
+        #     ValidatedEmail(
+        #         local_part=r'"me \" \\ me"',
+        #         # ascii_local_part=r'"me \" \\ me"',
+        #         # smtputf8=False,
+        #         # ascii_domain="example.org",
+        #         domain_name="example.org",
+        #         normalized=r'"me \" \\ me"@example.org',
+        #         original=r'"My.\"Na\\me\".Is" <"me \" \\ me"@example.org>',
+        #         # ascii_email=r'"me \" \\ me"@example.org',
+        #         # display_name='My."Na\\me".Is',
+        #     ),
+        # ),
+    ],
+)
+def test_email_valid(email_input: str, output: ValidatedEmail) -> None:
+    # These addresses do not require SMTPUTF8. See test_email_valid_intl_local_part
+    # for addresses that are valid but require SMTPUTF8. Check that it passes with
+    # allow_smtput8 both on and off.
+    emailinfo = validate_email(
+        email_input,
+        deliverable_address=False,
+        allow_smtputf8=False,
+        allow_quoted_local=True,
+        # allow_display_name=True,
+    )
+
+    assert emailinfo == output
+    assert (
+        validate_email(
+            email_input,
+            deliverable_address=False,
+            allow_smtputf8=True,
+            allow_quoted_local=True,
+            # allow_display_name=True,
+        )
+        == output
+    )
 
 
 @pytest.mark.parametrize(
@@ -48,20 +202,20 @@ def test_email_valid_only_if_quoted_local_part(
 def test_domain_literal() -> None:
     # Check parsing IPv4 addresses.
     validated = validate_email("me@[127.0.0.1]", allow_domain_literal=True)
-    assert validated.domain.name == "[127.0.0.1]"
-    assert repr(validated.domain.address) == "IPv4Address('127.0.0.1')"
+    assert validated.domain_name == "[127.0.0.1]"
+    assert repr(validated.domain_address) == "IPv4Address('127.0.0.1')"
     #
     # Check parsing IPv6 addresses.
     validated = validate_email("me@[IPv6:::1]", allow_domain_literal=True)
-    assert validated.domain.name == "[IPv6:::1]"
-    assert repr(validated.domain.address) == "IPv6Address('::1')"
+    assert validated.domain_name == "[IPv6:::1]"
+    assert repr(validated.domain_address) == "IPv6Address('::1')"
 
     # Check that IPv6 addresses are normalized.
     validated = validate_email(
         "me@[IPv6:0000:0000:0000:0000:0000:0000:0000:0001]", allow_domain_literal=True
     )
-    assert validated.domain.name == "[IPv6:::1]"
-    assert repr(validated.domain.address) == "IPv6Address('::1')"
+    assert validated.domain_name == "[IPv6:::1]"
+    assert repr(validated.domain_address) == "IPv6Address('::1')"
 
 
 @pytest.mark.parametrize(

@@ -63,15 +63,6 @@ const CASE_INSENSITIVE_MAILBOX_NAMES: &[&str] = &[
     "ftp",
 ];
 
-#[derive(Clone)]
-#[pyclass]
-struct ValidatedDomain {
-    #[pyo3(get)]
-    address: Option<IpAddr>,
-    #[pyo3(get)]
-    name: String,
-}
-
 #[pyclass]
 struct ValidatedEmail {
     #[pyo3(get)]
@@ -81,7 +72,9 @@ struct ValidatedEmail {
     #[pyo3(get)]
     local_part: String,
     #[pyo3(get)]
-    domain: ValidatedDomain,
+    domain_address: Option<IpAddr>,
+    #[pyo3(get)]
+    domain_name: String,
 }
 
 #[derive(Default)]
@@ -134,16 +127,17 @@ impl EmailValidator {
             validated_local = validated_local.to_lowercase();
         }
 
-        // Validate the domain
-        let validated_domain = self._validate_domain(&unvalidated_domain)?;
+        // Validate the domain name and optional address
+        let (domain_name, domain_address) = self._validate_domain(&unvalidated_domain)?;
 
         // Construct the normalized email
-        let normalized = format!("{}@{}", validated_local, validated_domain.name);
+        let normalized = format!("{}@{}", validated_local, domain_name);
 
         Ok(ValidatedEmail {
             original: email.to_string(),
             local_part: validated_local,
-            domain: validated_domain,
+            domain_name,
+            domain_address,
             normalized,
         })
     }
@@ -257,7 +251,7 @@ impl EmailValidator {
         ))
     }
 
-    fn _validate_domain(&self, domain: &str) -> PyResult<ValidatedDomain> {
+    fn _validate_domain(&self, domain: &str) -> PyResult<(String, Option<IpAddr>)> {
         // Guard clause if domain is being executed independently
         if domain.is_empty() {
             return Err(PySyntaxError::new_err(
@@ -284,10 +278,7 @@ impl EmailValidator {
                     )
                 })?;
                 if let IpAddr::V6(addr) = addr {
-                    return Ok(ValidatedDomain {
-                        name: format!("[IPv6:{}]", addr),
-                        address: Some(IpAddr::V6(addr)),
-                    });
+                    return Ok((format!("[IPv6:{}]", addr), Some(IpAddr::V6(addr))));
                 }
             }
 
@@ -296,13 +287,12 @@ impl EmailValidator {
                  PySyntaxError::new_err("Invalid Domain: The address in brackets following the '@' sign is not a valid IP address.")
             })?;
 
-            return Ok(ValidatedDomain {
-                name: match addr {
-                    IpAddr::V4(_) => format!("[{}]", addr),
-                    IpAddr::V6(_) => format!("[IPv6:{}]", addr),
-                },
-                address: Some(addr),
-            });
+            let name = match addr {
+                IpAddr::V4(_) => format!("[{}]", addr),
+                IpAddr::V6(_) => format!("[IPv6:{}]", addr),
+            };
+
+            return Ok((name, Some(addr)));
         }
 
         // Check for invalid characters in the domain part
@@ -403,11 +393,7 @@ impl EmailValidator {
             ));
             }
         }
-
-        Ok(ValidatedDomain {
-            name: normalized_domain.to_string(),
-            address: None,
-        })
+        Ok((normalized_domain.to_string(), None))
     }
 }
 
@@ -765,8 +751,8 @@ mod tests {
         let result = emv.validate_email(email);
         assert!(result.is_ok());
         let validated_email = result.unwrap();
-        assert_eq!(validated_email.domain.name, expected_domain);
-        assert_eq!(validated_email.domain.address, expected_ip);
+        assert_eq!(validated_email.domain_name, expected_domain);
+        assert_eq!(validated_email.domain_address, expected_ip);
     }
 
     #[rstest]
