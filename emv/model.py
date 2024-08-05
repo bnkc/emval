@@ -40,12 +40,6 @@ class ValidatedEmail:
             f"local_part={self.local_part}, domain_name={self.domain_name}, domain_address={self.domain_address})"
         )
 
-    def as_dict(self) -> Dict[str, Any]:
-        d = self.__dict__
-        if d.get("domain_address"):
-            d["domain_address"] = repr(d["domain_address"])
-        return d
-
     def __eq__(self, other) -> bool:
         if isinstance(other, ValidatedEmail):
             return (
@@ -56,3 +50,9 @@ class ValidatedEmail:
                 and self.domain_address == other.domain_address
             )
         return False
+
+    def as_dict(self) -> Dict[str, Any]:
+        d = self.__dict__
+        if d.get("domain_address"):
+            d["domain_address"] = repr(d["domain_address"])
+        return d

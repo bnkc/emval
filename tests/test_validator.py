@@ -137,10 +137,7 @@ from emv import validate_email, ValidatedEmail
     ],
 )
 def test_email_valid(email_input: str, output: ValidatedEmail) -> None:
-    # These addresses do not require SMTPUTF8. See test_email_valid_intl_local_part
-    # for addresses that are valid but require SMTPUTF8. Check that it passes with
-    # allow_smtput8 both on and off.
-    emailinfo = validate_email(
+    validated_email = validate_email(
         email_input,
         deliverable_address=False,
         allow_smtputf8=False,
@@ -148,7 +145,7 @@ def test_email_valid(email_input: str, output: ValidatedEmail) -> None:
         # allow_display_name=True,
     )
 
-    assert emailinfo == output
+    assert validated_email == output
     assert (
         validate_email(
             email_input,
