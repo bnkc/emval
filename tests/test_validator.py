@@ -3,7 +3,7 @@ from emv import validate_email, ValidatedEmail
 
 
 # This is the python-email-validator (https://github.com/JoshData/python-email-validator/blob/main/tests/test_syntax.py) test suite.
-# testing
+# It has been slightly modified and does not cover all edge cases, including display names and checking dns_resolver
 
 
 @pytest.mark.parametrize(
@@ -13,127 +13,56 @@ from emv import validate_email, ValidatedEmail
             "Abc@example.tld",
             ValidatedEmail(
                 local_part="Abc",
-                # ascii_local_part="Abc",
-                # smtputf8=False,
-                # ascii_domain="example.tld",
                 domain_name="example.tld",
                 normalized="Abc@example.tld",
                 original="Abc@example.tld",
-                # ascii_email="Abc@example.tld",
             ),
         ),
-        # (
-        #     "Abc.123@test-example.com",
-        #     MakeValidatedEmail(
-        #         local_part="Abc.123",
-        #         ascii_local_part="Abc.123",
-        #         smtputf8=False,
-        #         ascii_domain="test-example.com",
-        #         domain="test-example.com",
-        #         normalized="Abc.123@test-example.com",
-        #         ascii_email="Abc.123@test-example.com",
-        #     ),
-        # ),
-        # (
-        #     "user+mailbox/department=shipping@example.tld",
-        #     MakeValidatedEmail(
-        #         local_part="user+mailbox/department=shipping",
-        #         ascii_local_part="user+mailbox/department=shipping",
-        #         smtputf8=False,
-        #         ascii_domain="example.tld",
-        #         domain="example.tld",
-        #         normalized="user+mailbox/department=shipping@example.tld",
-        #         ascii_email="user+mailbox/department=shipping@example.tld",
-        #     ),
-        # ),
-        # (
-        #     "!#$%&'*+-/=?^_`.{|}~@example.tld",
-        #     MakeValidatedEmail(
-        #         local_part="!#$%&'*+-/=?^_`.{|}~",
-        #         ascii_local_part="!#$%&'*+-/=?^_`.{|}~",
-        #         smtputf8=False,
-        #         ascii_domain="example.tld",
-        #         domain="example.tld",
-        #         normalized="!#$%&'*+-/=?^_`.{|}~@example.tld",
-        #         ascii_email="!#$%&'*+-/=?^_`.{|}~@example.tld",
-        #     ),
-        # ),
-        # (
-        #     "jeff@臺網中心.tw",
-        #     MakeValidatedEmail(
-        #         local_part="jeff",
-        #         ascii_local_part="jeff",
-        #         smtputf8=False,
-        #         ascii_domain="xn--fiqq24b10vi0d.tw",
-        #         domain="臺網中心.tw",
-        #         normalized="jeff@臺網中心.tw",
-        #         ascii_email="jeff@xn--fiqq24b10vi0d.tw",
-        #     ),
-        # ),
-        # (
-        #     '"quoted local part"@example.org',
-        #     MakeValidatedEmail(
-        #         local_part='"quoted local part"',
-        #         ascii_local_part='"quoted local part"',
-        #         smtputf8=False,
-        #         ascii_domain="example.org",
-        #         domain="example.org",
-        #         normalized='"quoted local part"@example.org',
-        #         ascii_email='"quoted local part"@example.org',
-        #     ),
-        # ),
-        # (
-        #     '"de-quoted.local.part"@example.org',
-        #     MakeValidatedEmail(
-        #         local_part="de-quoted.local.part",
-        #         ascii_local_part="de-quoted.local.part",
-        #         smtputf8=False,
-        #         ascii_domain="example.org",
-        #         domain="example.org",
-        #         normalized="de-quoted.local.part@example.org",
-        #         ascii_email="de-quoted.local.part@example.org",
-        #     ),
-        # ),
-        # (
-        #     "MyName <me@example.org>",
-        #     MakeValidatedEmail(
-        #         local_part="me",
-        #         ascii_local_part="me",
-        #         smtputf8=False,
-        #         ascii_domain="example.org",
-        #         domain="example.org",
-        #         normalized="me@example.org",
-        #         ascii_email="me@example.org",
-        #         display_name="MyName",
-        #     ),
-        # ),
-        # (
-        #     "My Name <me@example.org>",
-        #     MakeValidatedEmail(
-        #         local_part="me",
-        #         ascii_local_part="me",
-        #         smtputf8=False,
-        #         ascii_domain="example.org",
-        #         domain="example.org",
-        #         normalized="me@example.org",
-        #         ascii_email="me@example.org",
-        #         display_name="My Name",
-        #     ),
-        # ),
-        # (
-        #     r'"My.\"Na\\me\".Is" <"me \" \\ me"@example.org>',
-        #     ValidatedEmail(
-        #         local_part=r'"me \" \\ me"',
-        #         # ascii_local_part=r'"me \" \\ me"',
-        #         # smtputf8=False,
-        #         # ascii_domain="example.org",
-        #         domain_name="example.org",
-        #         normalized=r'"me \" \\ me"@example.org',
-        #         original=r'"My.\"Na\\me\".Is" <"me \" \\ me"@example.org>',
-        #         # ascii_email=r'"me \" \\ me"@example.org',
-        #         # display_name='My."Na\\me".Is',
-        #     ),
-        # ),
+        (
+            "Abc.123@test-example.com",
+            ValidatedEmail(
+                local_part="Abc.123",
+                domain_name="test-example.com",
+                normalized="Abc.123@test-example.com",
+                original="Abc.123@test-example.com",
+            ),
+        ),
+        (
+            "user+mailbox/department=shipping@example.tld",
+            ValidatedEmail(
+                local_part="user+mailbox/department=shipping",
+                domain_name="example.tld",
+                normalized="user+mailbox/department=shipping@example.tld",
+                original="user+mailbox/department=shipping@example.tld",
+            ),
+        ),
+        (
+            "!#$%&'*+-/=?^_`.{|}~@example.tld",
+            ValidatedEmail(
+                local_part="!#$%&'*+-/=?^_`.{|}~",
+                domain_name="example.tld",
+                normalized="!#$%&'*+-/=?^_`.{|}~@example.tld",
+                original="!#$%&'*+-/=?^_`.{|}~@example.tld",
+            ),
+        ),
+        (
+            '"quoted local part"@example.org',
+            ValidatedEmail(
+                local_part='"quoted local part"',
+                domain_name="example.org",
+                normalized='"quoted local part"@example.org',
+                original='"quoted local part"@example.org',
+            ),
+        ),
+        (
+            '"de-quoted.local.part"@example.org',
+            ValidatedEmail(
+                local_part="de-quoted.local.part",
+                domain_name="example.org",
+                normalized="de-quoted.local.part@example.org",
+                original='"de-quoted.local.part"@example.org',
+            ),
+        ),
     ],
 )
 def test_email_valid(email_input: str, output: ValidatedEmail) -> None:
@@ -142,7 +71,6 @@ def test_email_valid(email_input: str, output: ValidatedEmail) -> None:
         deliverable_address=False,
         allow_smtputf8=False,
         allow_quoted_local=True,
-        # allow_display_name=True,
     )
 
     assert validated_email == output
@@ -152,7 +80,6 @@ def test_email_valid(email_input: str, output: ValidatedEmail) -> None:
             deliverable_address=False,
             allow_smtputf8=True,
             allow_quoted_local=True,
-            # allow_display_name=True,
         )
         == output
     )
