@@ -3,7 +3,6 @@ import random
 import string
 import argparse
 import logging
-import matplotlib.pyplot as plt
 import plotly.graph_objects as go
 import ipaddress
 from typing import Callable, Dict, Any
