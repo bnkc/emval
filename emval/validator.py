@@ -1,6 +1,6 @@
 from typing import Union
 from .model import ValidatedEmail
-from emv import _emv
+from emval import _emval
 
 
 class EmailValidator:
@@ -30,7 +30,7 @@ class EmailValidator:
         allow_domain_literal: bool = False,
         deliverable_address: bool = True,
     ):
-        self._emv = _emv.EmailValidator(
+        self._emval = _emval.EmailValidator(
             allow_smtputf8,
             allow_empty_local,
             allow_quoted_local,
@@ -53,7 +53,7 @@ class EmailValidator:
             DomainLiteralError: If domain literals are not allowed.
             LengthError: If the email length exceeds the maximum allowed length.
         """
-        validated_email = self._emv.validate_email(email)
+        validated_email = self._emval.validate_email(email)
         return ValidatedEmail(
             original=validated_email.original,
             normalized=validated_email.normalized,
@@ -89,11 +89,11 @@ def validate_email(
     Returns:
         ValidatedEmail: An instance if the email is valid.
     """
-    emv = EmailValidator(
+    emval = EmailValidator(
         allow_smtputf8,
         allow_empty_local,
         allow_quoted_local,
         allow_domain_literal,
         deliverable_address,
     )
-    return emv.validate_email(email)
+    return emval.validate_email(email)

@@ -1,4 +1,4 @@
-# This is the public API of emv
+# This is the public API of emval
 from .validator import validate_email, EmailValidator
 from .model import ValidatedEmail
 

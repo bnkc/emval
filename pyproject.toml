@@ -3,7 +3,7 @@ requires = ["maturin>=1.7,<2.0"]
 build-backend = "maturin"
 
 [project]
-name = "emv"
+name = "emval"
 requires-python = ">=3.8"
 classifiers = [
     "Programming Language :: Rust",
@@ -12,5 +12,5 @@ classifiers = [
 ]
 dynamic = ["version"]
 [tool.maturin]
-module-name = "emv._emv"
+module-name = "emval._emval"
 features = ["pyo3/extension-module"]

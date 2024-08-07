@@ -563,7 +563,7 @@ fn _validate_chars(chars: &str, allow_space: bool) -> Result<(), PyErr> {
 }
 
 #[pymodule]
-fn _emv(_py: Python, m: &Bound<PyModule>) -> PyResult<()> {
+fn _emval(_py: Python, m: &Bound<PyModule>) -> PyResult<()> {
     m.add_class::<EmailValidator>()?;
     m.add_class::<ValidatedEmail>()?;
 
@@ -599,8 +599,8 @@ mod tests {
         Some("example-indeed@strange-example.com")
     )]
     fn test_validate_email_valid(#[case] email: &str, #[case] expected: Option<&str>) {
-        let emv = EmailValidator::default();
-        let result = emv.validate_email(email);
+        let emval = EmailValidator::default();
+        let result = emval.validate_email(email);
 
         match expected {
             Some(expected_normalized) => {
@@ -623,8 +623,8 @@ mod tests {
     #[case("invalid-char@domain.c*m", None)]
     #[case("too..many..dots@domain.com", None)]
     fn test_validate_email_invalid(#[case] email: &str, #[case] expected: Option<&str>) {
-        let emv = EmailValidator::default();
-        let result = emv.validate_email(email);
+        let emval = EmailValidator::default();
+        let result = emval.validate_email(email);
 
         match expected {
             Some(expected_normalized) => {
@@ -642,8 +642,8 @@ mod tests {
     #[case("POSTMASTER@example.com", Some("postmaster@example.com"))]
     #[case("NOT-POSTMASTER@example.com", Some("NOT-POSTMASTER@example.com"))]
     fn test_validate_email_case_insensitive(#[case] email: &str, #[case] expected: Option<&str>) {
-        let emv = EmailValidator::default();
-        let result = emv.validate_email(email);
+        let emval = EmailValidator::default();
+        let result = emval.validate_email(email);
 
         match expected {
             Some(expected_normalized) => {
@@ -669,8 +669,8 @@ mod tests {
     #[case("e.com")] // Minimum length domain
     #[case("a.b.c.d.e.f.g.h.i.j.k.l.m.n.o.p.q.r.s.t.u.v.w.x.y.z.com")] // Long subdomain
     fn test_validate_domain_valid(#[case] domain: &str) {
-        let emv = EmailValidator::default();
-        let result = emv._validate_domain(domain);
+        let emval = EmailValidator::default();
+        let result = emval._validate_domain(domain);
 
         assert!(result.is_ok());
     }
@@ -694,8 +694,8 @@ mod tests {
     #[case("xn--d1acufc.xn--p1ai-")] // Internationalized domain name (IDN) with trailing hyphen
     #[case("ex_ample.com")] // Underscore in domain
     fn test_validate_domain_invalid(#[case] domain: &str) {
-        let emv = EmailValidator::default();
-        let result = emv._validate_domain(domain);
+        let emval = EmailValidator::default();
+        let result = emval._validate_domain(domain);
 
         assert!(result.is_err());
     }
@@ -708,8 +708,8 @@ mod tests {
     #[case("me@onion.onion.onion", false)]
     #[case("me@test.test.test", false)]
     fn test_special_use_domains(#[case] domain: &str, #[case] expected: bool) {
-        let emv = EmailValidator::default();
-        let result = emv._validate_domain(domain);
+        let emval = EmailValidator::default();
+        let result = emval._validate_domain(domain);
 
         if expected {
             assert!(result.is_ok());
@@ -743,12 +743,12 @@ mod tests {
         #[case] expected_domain: &str,
         #[case] expected_ip: Option<IpAddr>,
     ) {
-        let emv = EmailValidator {
+        let emval = EmailValidator {
             allow_domain_literal: true,
             ..EmailValidator::default()
         };
 
-        let result = emv.validate_email(email);
+        let result = emval.validate_email(email);
         assert!(result.is_ok());
         let validated_email = result.unwrap();
         assert_eq!(validated_email.domain_name, expected_domain);
@@ -762,12 +762,12 @@ mod tests {
     #[case("me@[127.0.0.256]")]
     #[case("me@[IPv6:2001:db8:1234:5678:9abc:def0:1234:56789]")]
     fn test_validate_domain_literal_invalid(#[case] email: &str) {
-        let emv = EmailValidator {
+        let emval = EmailValidator {
             allow_domain_literal: true,
             ..EmailValidator::default()
         };
 
-        let result = emv.validate_email(email);
+        let result = emval.validate_email(email);
         assert!(result.is_err());
     }
 
@@ -786,13 +786,13 @@ mod tests {
         #[case] allow_quoted_local: bool,
         #[case] allow_smtputf8: bool,
     ) {
-        let emv = EmailValidator {
+        let emval = EmailValidator {
             allow_quoted_local,
             allow_smtputf8,
             ..EmailValidator::default()
         };
 
-        let result = emv._validate_local_part(input);
+        let result = emval._validate_local_part(input);
 
         if let Some(expected_local) = expected {
             assert!(result.is_ok());
@@ -818,13 +818,13 @@ mod tests {
         #[case] allow_quoted_local: bool,
         #[case] allow_smtputf8: bool,
     ) {
-        let emv = EmailValidator {
+        let emval = EmailValidator {
             allow_quoted_local,
             allow_smtputf8,
             ..EmailValidator::default()
         };
 
-        let result = emv._validate_local_part(input);
+        let result = emval._validate_local_part(input);
 
         if let Some(expected_local) = expected {
             assert!(result.is_ok());
@@ -880,13 +880,13 @@ mod tests {
         #[case] allow_quoted_local: bool,
         #[case] allow_smtputf8: bool,
     ) {
-        let emv = EmailValidator {
+        let emval = EmailValidator {
             allow_quoted_local,
             allow_smtputf8,
             ..EmailValidator::default()
         };
 
-        let result = emv._validate_local_part(input);
+        let result = emval._validate_local_part(input);
 
         if let Some(expected_local) = expected {
             assert!(result.is_ok());

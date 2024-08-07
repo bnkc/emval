@@ -1,5 +1,5 @@
 import pytest
-from emv import validate_email, ValidatedEmail
+from emval import validate_email, ValidatedEmail
 
 
 # This is the python-email-validator (https://github.com/JoshData/python-email-validator/blob/main/tests/test_syntax.py) test suite.
