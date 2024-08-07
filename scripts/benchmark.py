@@ -157,6 +157,7 @@ def _plot_results(results: Dict[str, float], num_emails: int) -> None:
         plot_bgcolor="white",
         showlegend=False,
         margin=dict(l=100, r=20, t=70, b=40),
+        height=400,
     )
 
     for index, value in enumerate(durations):
@@ -175,7 +176,7 @@ def _plot_results(results: Dict[str, float], num_emails: int) -> None:
         )
 
     fig.write_image("perf.svg")
-    # fig.show()
+    fig.show()
 
 
 def _save_results(results: Dict[str, float], filename: str) -> None:
