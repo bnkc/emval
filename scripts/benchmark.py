@@ -4,6 +4,7 @@ import string
 import argparse
 import logging
 import matplotlib.pyplot as plt
+import plotly.graph_objects as go
 import ipaddress
 from typing import Callable, Dict, Any
 from tqdm import tqdm
@@ -12,6 +13,7 @@ from tqdm import tqdm
 from emv import validate_email as emv_validate
 from email_validator import validate_email as email_validator_validate
 from verify_email import verify_email
+from pyisemail import is_email
 
 
 def _generate_random_email() -> str:
@@ -113,52 +115,67 @@ def _plot_results(results: Dict[str, float], num_emails: int) -> None:
         results (Dict[str, float]): The benchmarking results.
         num_emails (int): The number of emails validated.
     """
-    fig, ax = plt.subplots(figsize=(7, 2))
-
     sorted_results = sorted(results.items(), key=lambda x: x[1], reverse=True)
     labels, durations = zip(*sorted_results)
-    ax.barh(labels, durations, color="blue")
-    ax.set_xlim(0, max(durations) * 1.1)
-    ax.set_facecolor("none")
-    fig.patch.set_facecolor("none")
 
-    ax.xaxis.grid(True, color="0.2", linestyle="-", linewidth=1)
-    ax.yaxis.grid(False)
-    ax.spines["top"].set_color("none")
-    ax.spines["right"].set_color("none")
-    ax.spines["left"].set_color("none")
-    ax.spines["bottom"].set_color("none")
-    ax.xaxis.label.set_color("none")
-    ax.yaxis.label.set_color("white")
-    ax.tick_params(axis="x", colors="white", which="both", length=0)
-    ax.tick_params(axis="y", colors="white", which="both", length=0)
+    fig = go.Figure()
 
-    max_duration = int(max(durations))
-    ax.set_xticks(range(0, max_duration + 1, 2))  # Setting ticks at 2-second intervals
-    ax.set_xticklabels([f"  {label:d}s" for label in ax.get_xticks()], color="white")
-
-    for index, value in enumerate(durations):
-        fontweight = "bold" if index == len(durations) - 1 else "normal"
-        ax.text(
-            value,
-            index,
-            f"{value:.2f}s",
-            va="center",
-            color="white",
-            fontweight=fontweight,
+    fig.add_trace(
+        go.Bar(
+            x=durations,
+            y=labels,
+            orientation="h",
+            marker=dict(
+                color="rgba(58, 71, 80, 0.6)",
+                line=dict(color="rgba(58, 71, 80, 1.0)", width=1.5),
+            ),
         )
-
-    plt.title(
-        f"Benchmarking {num_emails} Emails of various complexities",
-        color="white",
-        style="italic",
-        loc="left",
-        pad=20,
     )
 
-    plt.tight_layout()
-    plt.savefig("perf.svg")
-    # plt.show()
+    fig.update_layout(
+        title=dict(
+            text=f"Benchmarking {num_emails} Emails of Various Complexities",
+            font=dict(size=20, color="rgba(58, 71, 80, 1.0)"),
+            x=0.5,
+            xanchor="center",
+        ),
+        xaxis=dict(
+            title="Duration (s)",
+            tickvals=list(range(0, int(max(durations)) + 1, 2)),
+            ticktext=[f"{tick}s" for tick in range(0, int(max(durations)) + 1, 2)],
+            tickfont=dict(size=12, color="rgba(58, 71, 80, 1.0)"),
+            gridcolor="rgba(200, 200, 200, 0.5)",
+            zeroline=False,
+        ),
+        yaxis=dict(
+            title="",
+            tickfont=dict(size=12, color="rgba(58, 71, 80, 1.0)"),
+            showgrid=False,  # Remove horizontal grid lines
+            zeroline=False,
+        ),
+        paper_bgcolor="white",
+        plot_bgcolor="white",
+        showlegend=False,
+        margin=dict(l=100, r=20, t=70, b=40),
+    )
+
+    for index, value in enumerate(durations):
+        fig.add_annotation(
+            x=value,
+            y=labels[index],
+            text=f"{value:.2f}s",
+            showarrow=False,
+            font=dict(
+                color="rgba(58, 71, 80, 1.0)",
+                size=12,
+                weight="bold" if index == len(durations) - 1 else "normal",
+            ),
+            xanchor="left",
+            yanchor="middle",
+        )
+
+    fig.write_image("perf.svg")
+    # fig.show()
 
 
 def _save_results(results: Dict[str, float], filename: str) -> None:
@@ -197,6 +214,7 @@ def main() -> None:
         "emv": emv_validate,
         "python-email-validator": email_validator_validate,
         "verify-email": verify_email,
+        "pyisemail": is_email,
     }
 
     results: Dict[str, float] = {}
