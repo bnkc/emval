@@ -1,34 +1,27 @@
 # 📬 emv
 
-emv is a blazingly fast Python email validator written in Rust.
+`emv` is a blazingly fast python email validator written in rust that is between _100-1000x_ faster than the next email validator.
 
-```python
-from emv import validate_email, EmailValidator
+![performance image](https://raw.githubusercontent.com/bnkc/emv/a529464cc8add6497105fe53116ba40903082f7b/perf.svg)
 
-email = "example@domain.com"
+## Features
 
-try:
-    validated_email = validate_email(email)
-    print(validated_email)
-except Exception as e:
-    print(f"Validation error: {e}")
-```
+- Drop in replacement for common email validators such as python-email-validator, verify-email, pyIsEmail.
+- 100-1000x faster than [python-email-validator](https://github.com/JoshData/python-email-validator).
+- Validates email address syntax according to [RFC 5322](https://www.rfc-editor.org/rfc/rfc5322.html) and [RFC 6531](https://www.rfc-editor.org/rfc/rfc6531.html).
+- Checks domain deliverability. _(coming soon)_
+- Supports internationalized domain names (IDN) and local parts.
+- Provides user friendly syntax errors.
+- Normalized addresses.
+- Rejects Invalid and Unsafe unicode characters.
 
-## Installation
+## Getting Started
 
-Install emv from PyPI:
+The open source version of `emv` can be installed from PyPI:
 
 ```sh
 pip install emv
 ```
-
-## Features
-
-- Validates email address syntax according to RFC 5322 and RFC 6531
-- Checks domain deliverability
-- Supports internationalized domain names (IDN) and local parts
-- Provides friendly error messages
-- Optimized for performance with Rust backend
 
 ## Usage
 
@@ -42,73 +35,22 @@ from emv import validate_email, EmailValidator
 email = "example@domain.com"
 
 try:
-    validated_email = validate_email(email)
-    print(validated_email)
+
+    # Check if the email is valid. You can also provide several flags as shown below.
+    val_email = validate_email(email)
+
+    # The function returns a ValidatedEmail Object,
+    # from which you can utilize `normalized` to write to a DB.
+    normalized_email = val_email.normalized
+    
 except Exception as e:
-    print(f"Validation error: {e}")
+    # Example: "Invalid Local Part: Quoting the local part before the '@' sign is not permitted in this context."
+    print(str(e))
 ```
 
 ### Configurations
 
-You can customize the email validation behavior using the `EmailValidator` class:
-
-```python
-emv = EmailValidator(
-    allow_smtputf8=True,
-    allow_empty_local=False,
-    allow_quoted_local=False,
-    allow_domain_literal=False,
-    deliverable_address=True,
-)
-
-email = "example@domain.com"
-
-try:
-    validated_email = emv.validate_email(email)
-    print(validated_email)
-except Exception as e:
-    print(f"Validation error: {e}")
-```
-
-### Options
-
-- `allow_smtputf8` (default: `True`): Allows internationalized email addresses.
-- `allow_empty_local` (default: `False`): Allows an empty local part (e.g., `@domain.com`).
-- `allow_quoted_local` (default: `False`): Allows quoted local parts (e.g., `"user name"@domain.com`).
-- `allow_domain_literal` (default: `False`): Allows domain literals (e.g., `[192.168.0.1]`).
-- `deliverable_address` (default: `True`): Checks if the email address is deliverable by verifying the domain's MX records.
-
-## Technical Details
-
-### Email Address Syntax
-
-EMV follows the syntax rules defined in [RFC 5322](https://www.rfc-editor.org/rfc/rfc5322.html) and [RFC 6531](https://www.rfc-editor.org/rfc/rfc6531.html) for email address validation. The library ensures that the local part and domain of the email address conform to the specified standards, including support for internationalized characters.
-
-### Normalization
-
-The library normalizes email addresses to ensure consistency. This includes lowercasing the domain part, Unicode NFC normalization, and removing unnecessary quotes and backslashes in the local part.
-
-### Error Handling
-
-EMV provides clear and concise error messages to help users understand why an email address is invalid. The errors are categorized into syntax errors, domain errors, and length errors.
-
-## Examples
-
-### Basic Validation
-
-```python
-from emv import validate_email
-
-email = "user@example.com"
-
-try:
-    validated_email = validate_email(email)
-    print(validated_email)
-except Exception as e:
-    print(f"Validation error: {e}")
-```
-
-### Validation with Custom Settings
+You can customize the email validation behavior using the `EmailValidator` class once, if more convenient:
 
 ```python
 from emv import EmailValidator
@@ -127,27 +69,31 @@ try:
     validated_email = emv.validate_email(email)
     print(validated_email)
 except Exception as e:
-    print(f"Validation error: {e}")
+    print(str(r))
 ```
 
-### Handling Errors
+### Options
 
-```python
-from emv import validate_email
+- `allow_smtputf8`: Allows internationalized email addresses.
+- `allow_empty_local`: Allows an empty local part (e.g., `@domain.com`).
+- `allow_quoted_local`: Allows quoted local parts (e.g., `"user name"@domain.com`).
+- `allow_domain_literal`: Allows domain literals (e.g., `[192.168.0.1]`).
+- `deliverable_address`: Checks if the email address is deliverable by verifying the domain's MX records.
 
-email = "invalid-email"
+## Technical Details
 
-try:
-    validated_email = validate_email(email)
-    print(validated_email)
-except Exception as e:
-    print(f"Validation error: {e}")
-```
+### Email Address Syntax
+
+EMV follows the syntax rules defined in [RFC 5322](https://www.rfc-editor.org/rfc/rfc5322.html) and [RFC 6531](https://www.rfc-editor.org/rfc/rfc6531.html) for email address validation. The library ensures that the local part and domain of the email address conform to the specified standards, including support for internationalized characters.
+
+### Normalization
+
+The library normalizes email addresses to ensure consistency. This includes lowercasing the domain part, Unicode NFC normalization, and removing unnecessary quotes and backslashes in the local part.
+
 
 ## Getting Help
 
-For questions and issues, please open an issue in the [GitHub issue tracker](https://github.com/your-repo/emv/issues).
-
+For questions and issues, please open an issue in the [GitHub issue tracker](https://github.com/bnkc/emv/issues).
 ## License
 
-EMV is licensed under the [MIT License](https://opensource.org/licenses/MIT). See the [LICENSE](LICENSE) file for more details.
+EMV is licensed under the [MIT License](https://opensource.org/licenses/MIT). See the [LICENSE]([LICENSE](https://github.com/bnkc/emv/blob/main/LICENSE)) file for more details.
