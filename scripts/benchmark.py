@@ -8,7 +8,7 @@ import ipaddress
 from typing import Callable, Dict, Any
 from tqdm import tqdm
 
-# Import the validators you want to benchmark
+# Import the validators to benchmark
 from emv import validate_email as emv_validate
 from email_validator import validate_email as email_validator_validate
 from verify_email import verify_email
