@@ -106,60 +106,6 @@ def _benchmark_validator(validator: Callable[[str], None], num_emails: int) -> f
     return end_time - start_time
 
 
-# def _plot_results(results: Dict[str, float], num_emails: int) -> None:
-#     """Plot the benchmarking results.
-#
-#     Args:
-#         results (Dict[str, float]): The benchmarking results.
-#         num_emails (int): The number of emails validated.
-#     """
-#     fig, ax = plt.subplots(figsize=(7, 2))
-#
-#     sorted_results = sorted(results.items(), key=lambda x: x[1], reverse=True)
-#     labels, durations = zip(*sorted_results)
-#     ax.barh(labels, durations, color="blue")
-#     ax.set_xlim(0, max(durations) * 1.1)
-#     ax.set_facecolor("none")
-#     fig.patch.set_facecolor("none")
-#
-#     ax.xaxis.grid(True, color="0.2", linestyle="-", linewidth=1)
-#     ax.yaxis.grid(False)
-#     ax.spines["top"].set_color("none")
-#     ax.spines["right"].set_color("none")
-#     ax.spines["left"].set_color("none")
-#     ax.spines["bottom"].set_color("none")
-#     ax.xaxis.label.set_color("none")
-#     ax.yaxis.label.set_color("white")
-#     ax.tick_params(axis="x", colors="white", which="both", length=0)
-#     ax.tick_params(axis="y", colors="white", which="both", length=0)
-#
-#     max_duration = int(max(durations))
-#     ax.set_xticks(range(0, max_duration + 1))
-#     ax.set_xticklabels([f"  {label:d}s" for label in ax.get_xticks()], color="white")
-#
-#     for index, value in enumerate(durations):
-#         fontweight = "bold" if index == len(durations) - 1 else "normal"
-#         ax.text(
-#             value,
-#             index,
-#             f"{value:.2f}s",
-#             va="center",
-#             color="white",
-#             fontweight=fontweight,
-#         )
-#
-#     plt.title(
-#         f"Benchmarking {num_emails} Emails of various complexities",
-#         color="white",
-#         style="italic",
-#         loc="left",
-#         pad=20,
-#     )
-#
-#     plt.tight_layout()
-#     plt.savefig("benchmark_results.svg", format="svg")
-#     plt.show()
-#
 def _plot_results(results: Dict[str, float], num_emails: int) -> None:
     """Plot the benchmarking results.
 
@@ -211,8 +157,8 @@ def _plot_results(results: Dict[str, float], num_emails: int) -> None:
     )
 
     plt.tight_layout()
-    # plt.show()
     plt.savefig("perf.svg")
+    # plt.show()
 
 
 def _save_results(results: Dict[str, float], filename: str) -> None:
