@@ -1,23 +1,23 @@
-# 📬 emv
+# 📬 EMV
 
-`emv` is a blazingly fast python email validator written in rust that is between _100-1000x_ faster than the next email validator.
+`emv` is a blazingly fast Python email validator written in Rust, offering performance improvements of 100-1000x over traditional validators.
 
-![performance image](https://raw.githubusercontent.com/bnkc/emv/a529464cc8add6497105fe53116ba40903082f7b/perf.svg)
+![performance image](https://raw.githubusercontent.com/bnkc/emv/e4fe97ee7feb643a3534342bb15421512d6efa15/perf.svg)
 
 ## Features
 
-- Drop in replacement for common email validators such as python-email-validator, verify-email, pyIsEmail.
+- Drop-in replacement for popular email validators like `python-email-validator`, `verify-email`, and `pyIsEmail`.
 - 100-1000x faster than [python-email-validator](https://github.com/JoshData/python-email-validator).
 - Validates email address syntax according to [RFC 5322](https://www.rfc-editor.org/rfc/rfc5322.html) and [RFC 6531](https://www.rfc-editor.org/rfc/rfc6531.html).
-- Checks domain deliverability. _(coming soon)_
+- Checks domain deliverability (coming soon).
 - Supports internationalized domain names (IDN) and local parts.
-- Provides user friendly syntax errors.
-- Normalized addresses.
-- Rejects Invalid and Unsafe unicode characters.
+- Provides user-friendly syntax errors.
+- Normalizes addresses.
+- Rejects invalid and unsafe Unicode characters.
 
 ## Getting Started
 
-The open source version of `emv` can be installed from PyPI:
+Install `emv` from PyPI:
 
 ```sh
 pip install emv
@@ -35,14 +35,10 @@ from emv import validate_email, EmailValidator
 email = "example@domain.com"
 
 try:
-
-    # Check if the email is valid. You can also provide several flags as shown below.
+    # Check if the email is valid.
     val_email = validate_email(email)
-
-    # The function returns a ValidatedEmail Object,
-    # from which you can utilize `normalized` to write to a DB.
+    # Utilize the normalized form for storage.
     normalized_email = val_email.normalized
-    
 except Exception as e:
     # Example: "Invalid Local Part: Quoting the local part before the '@' sign is not permitted in this context."
     print(str(e))
@@ -50,7 +46,7 @@ except Exception as e:
 
 ### Configurations
 
-You can customize the email validation behavior using the `EmailValidator` class once, if more convenient:
+Customize email validation behavior using the `EmailValidator` class:
 
 ```python
 from emv import EmailValidator
@@ -69,7 +65,7 @@ try:
     validated_email = emv.validate_email(email)
     print(validated_email)
 except Exception as e:
-    print(str(r))
+    print(str(e))
 ```
 
 ### Options
@@ -84,16 +80,38 @@ except Exception as e:
 
 ### Email Address Syntax
 
-EMV follows the syntax rules defined in [RFC 5322](https://www.rfc-editor.org/rfc/rfc5322.html) and [RFC 6531](https://www.rfc-editor.org/rfc/rfc6531.html) for email address validation. The library ensures that the local part and domain of the email address conform to the specified standards, including support for internationalized characters.
+EMV adheres to the syntax rules defined in [RFC 5322](https://www.rfc-editor.org/rfc/rfc5322.html) and [RFC 6531](https://www.rfc-editor.org/rfc/rfc6531.html). It supports both ASCII and internationalized characters.
+
+### Internationalized Email Addresses
+
+#### Domain Names
+
+EMV converts non-ASCII domain names into their ASCII "Punycode" form according to [IDNA 2008](https://www.rfc-editor.org/rfc/rfc5891.html). This ensures compatibility with systems that do not support Unicode.
+
+#### Local Parts
+
+EMV allows international characters in the local part of email addresses, following [RFC 6531](https://www.rfc-editor.org/rfc/rfc6531.html). It offers options to handle environments without SMTPUTF8 support.
+
+### Unsafe Unicode Characters
+
+EMV rejects unsafe Unicode characters to enhance security, preventing display and interpretation issues.
 
 ### Normalization
 
-The library normalizes email addresses to ensure consistency. This includes lowercasing the domain part, Unicode NFC normalization, and removing unnecessary quotes and backslashes in the local part.
+EMV normalizes email addresses to ensure consistency:
 
+- **Lowercasing domains:** Domain names are standardized to lowercase.
+- **Unicode NFC normalization:** Characters are transformed into their precomposed forms.
+- **Removing unnecessary characters:** Quotes and backslashes in the local part are removed.
+
+## Acknowledgements
+
+This project draws inspiration from [python-email-validator](https://github.com/JoshData/python-email-validator). While `python-email-validator` is more comprehensive, `emv` aims to provide a faster solution.
 
 ## Getting Help
 
 For questions and issues, please open an issue in the [GitHub issue tracker](https://github.com/bnkc/emv/issues).
+
 ## License
 
-EMV is licensed under the [MIT License](https://opensource.org/licenses/MIT). See the [LICENSE]([LICENSE](https://github.com/bnkc/emv/blob/main/LICENSE)) file for more details.
+EMV is licensed under the [MIT License](https://opensource.org/licenses/MIT). See the [LICENSE](https://github.com/bnkc/emv/blob/main/LICENSE) file for more details.
