@@ -124,8 +124,8 @@ def _plot_results(results: Dict[str, float], num_emails: int) -> None:
             y=labels,
             orientation="h",
             marker=dict(
-                color="rgba(58, 71, 80, 0.6)",
-                line=dict(color="rgba(58, 71, 80, 1.0)", width=1.5),
+                color="rgba(0, 51, 102, 0.8)",  # Darker blue color
+                line=dict(color="rgba(0, 51, 102, 1.0)", width=1.5),
             ),
         )
     )
@@ -133,7 +133,7 @@ def _plot_results(results: Dict[str, float], num_emails: int) -> None:
     fig.update_layout(
         title=dict(
             text=f"Benchmarking {num_emails} Emails of Various Complexities",
-            font=dict(size=20, color="rgba(58, 71, 80, 1.0)"),
+            font=dict(size=20),
             x=0.5,
             xanchor="center",
         ),
@@ -142,7 +142,7 @@ def _plot_results(results: Dict[str, float], num_emails: int) -> None:
             tickvals=list(range(0, int(max(durations)) + 1, 2)),
             ticktext=[f"{tick}s" for tick in range(0, int(max(durations)) + 1, 2)],
             tickfont=dict(size=12, color="rgba(58, 71, 80, 1.0)"),
-            gridcolor="rgba(200, 200, 200, 0.5)",
+            gridcolor="rgba(200, 200, 200, 0.3)",
             zeroline=False,
         ),
         yaxis=dict(
@@ -167,7 +167,6 @@ def _plot_results(results: Dict[str, float], num_emails: int) -> None:
             font=dict(
                 color="rgba(58, 71, 80, 1.0)",
                 size=12,
-                weight="bold" if index == len(durations) - 1 else "normal",
             ),
             xanchor="left",
             yanchor="middle",
