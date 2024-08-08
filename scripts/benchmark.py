@@ -12,7 +12,6 @@ from tqdm import tqdm
 from emval import validate_email as emval_validate
 from email_validator import validate_email as email_validator_validate
 from verify_email import verify_email
-from pyisemail import is_email
 
 
 def _generate_random_email() -> str:
@@ -214,7 +213,6 @@ def main() -> None:
         "emval": emval_validate,
         "python-email-validator": email_validator_validate,
         "verify-email": verify_email,
-        "pyisemail": is_email,
     }
 
     results: Dict[str, float] = {}

@@ -4,13 +4,29 @@ build-backend = "maturin"
 
 [project]
 name = "emval"
+authors = [
+  { name="Lev Ostatnigrosh", email="levostatnigrosh@gmail.com" },
+]
+description = "emval is a blazingly fast email validator"
+readme = "README.md"
 requires-python = ">=3.8"
 classifiers = [
+    "License :: OSI Approved :: MIT License",
+    "Intended Audience :: Developers",
     "Programming Language :: Rust",
     "Programming Language :: Python :: Implementation :: CPython",
     "Programming Language :: Python :: Implementation :: PyPy",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+    "Operating System :: POSIX :: Linux",
+    "Operating System :: Microsoft :: Windows",
+    "Operating System :: MacOS",
 ]
 dynamic = ["version"]
+
 [tool.maturin]
 module-name = "emval._emval"
 features = ["pyo3/extension-module"]
+
+[project.urls]
+Homepage = "https://github.com/bnkc/emval"
+Issues = "https://github.com/bnkc/emval/issues"
