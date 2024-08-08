@@ -2,7 +2,7 @@
 
 `emval` is a blazingly fast Python email validator written in Rust, offering performance improvements of 100-1000x over traditional validators.
 
-![performance image](https://raw.githubusercontent.com/bnkc/emval/03ee2b542f73641fdbf8be09994034258a55b641/perf.svg)
+![performance image](https://raw.githubusercontent.com/bnkc/emval/b90cc4a0ae24e329702872c4fb1cccf212d556a6/perf.svg)
 
 ## Features
 
