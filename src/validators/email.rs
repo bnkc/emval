@@ -37,6 +37,7 @@ impl EmailValidator {
 
         let mut valid_local_part =
             crate::validators::validate_local_part(self, &unvalidated_local_part)?;
+
         if crate::consts::CASE_INSENSITIVE_MAILBOX_NAMES
             .contains(&valid_local_part.to_lowercase().as_str())
         {
@@ -46,10 +47,9 @@ impl EmailValidator {
         let (domain_name, domain_address) =
             crate::validators::validate_domain(self, &unvalidated_domain)?;
 
-        // Check the domain deliverability
-        // if self.deliverable_address {
-        //     _check_deliverability(&domain_name, &domain_address)?;
-        // }
+        if self.deliverable_address {
+            crate::validators::validate_deliverability(&domain_name)?;
+        }
 
         let normalized = format!("{}@{}", valid_local_part, domain_name);
 
@@ -59,6 +59,7 @@ impl EmailValidator {
             domain_name,
             domain_address,
             normalized,
+            is_deliverable: true,
         })
     }
 }

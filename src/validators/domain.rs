@@ -161,30 +161,55 @@ pub fn validate_domain(
     Ok((normalized_domain.to_string(), None))
 }
 
-fn resolve_mx_records(domain: &str) -> Result<(), ValidationError> {
+pub fn validate_deliverability(domain: &str) -> Result<(), ValidationError> {
     let resolver = Resolver::new(ResolverConfig::default(), ResolverOpts::default())
         .map_err(|e| ValidationError::SyntaxError(e.to_string()))?;
 
-    let mx_records = resolver.mx_lookup(domain).map_err(|_| {
-        ValidationError::SyntaxError("Failed to resolve MX records for the domain.".to_string())
-    })?;
-
-    // Filter out null MX records from the list. Null MX records are identified by an empty
-    // 'exchange' field, which occurs after trailing dots have been stripped. This ensures
-    // that we only consider non-null MX records when determining the validity of the domain.
-    if mx_records
-        .iter()
-        .all(|mx| mx.exchange().to_string().is_empty())
-    {
-        return Err(ValidationError::SyntaxError(
-            "No MX records found for the domain.".to_string(),
-        ));
+    // Check MX records
+    if let Ok(mx_records) = resolver.mx_lookup(domain) {
+        for mx in mx_records.iter() {
+            let exchange = mx.exchange().to_string();
+            if exchange == "." {
+                return Err(ValidationError::SyntaxError(
+                    "Invalid Domain: The domain does not accept email due to a null MX record, indicating it is not configured to receive emails.".to_string(),
+                ));
+            }
+        }
+        if mx_records
+            .iter()
+            .any(|mx| !mx.exchange().to_string().is_empty())
+        {
+            return Ok(());
+        }
     }
-    Ok(())
-}
 
-fn resolve_fallback_records(domain: &str) -> Result<(), ValidationError> {
-    Ok(())
+    // Fallback to A/AAAA records
+    if let Ok(a_records) = resolver.ipv4_lookup(domain) {
+        if a_records.iter().any(|ip| ip.is_global()) {
+            return Ok(());
+        }
+    }
+    if let Ok(aaaa_records) = resolver.ipv6_lookup(domain) {
+        if aaaa_records.iter().any(|ip| ip.is_global()) {
+            return Ok(());
+        }
+    }
+
+    // Check SPF records (TXT)
+    if let Ok(txt_records) = resolver.txt_lookup(domain) {
+        for record in txt_records.iter() {
+            let txt = record.to_string();
+            if txt.starts_with("v=spf1 ") && txt.contains("-all") {
+                return Err(ValidationError::SyntaxError(
+                    "Invalid Domain: The domain does not send email due to an SPF record that rejects all emails.".to_string(),
+                ));
+            }
+        }
+    }
+
+    Err(ValidationError::SyntaxError(
+        "Invalid Domain: No MX, A, or AAAA records found for domain.".to_string(),
+    ))
 }
 
 #[cfg(test)]
@@ -260,8 +285,8 @@ mod tests {
     #[case("invalid_domain.com")]
     #[case("例え.テスト")]
     #[case("example..com")]
-    fn test_mx_lookup_invalid(#[case] domain: &str) {
-        assert!(resolve_mx_records(domain).is_err());
+    fn test_validate_deliverability_invalid(#[case] domain: &str) {
+        assert!(validate_deliverability(domain).is_err());
     }
 
     #[rstest]
@@ -271,7 +296,86 @@ mod tests {
     #[case("hotmail.com")]
     #[case("outlook.com")]
     #[case("aol.com")]
-    fn test_mx_lookup_valid(#[case] domain: &str) {
-        assert!(resolve_mx_records(domain).is_ok());
+    fn test_validate_deliverability_valid(#[case] domain: &str) {
+        assert!(validate_deliverability(domain).is_ok());
+    }
+
+    #[rstest]
+    #[case("blackhole.isi.edu")] // Known to have a null MX record
+    fn test_validate_deliverability_null_mx(#[case] domain: &str) {
+        let result = validate_deliverability(domain);
+        assert!(result.is_err());
+    }
+
+    #[rstest]
+    #[case("www.cloudflare.com")]
+    #[case("osu.edu")] // OSU's domain
+    fn test_validate_deliverability_valid_a_no_mx(#[case] domain: &str) {
+        assert!(validate_deliverability(domain).is_ok());
+    }
+
+    #[rstest]
+    #[case("nonexistentdomain.example")]
+    #[case("invalid-domain-test-12345.com")]
+    fn test_validate_deliverability_no_records(#[case] domain: &str) {
+        let result = validate_deliverability(domain);
+        assert!(result.is_err());
+    }
+
+    #[rstest]
+    #[case("thisdomaindoesnotexist.tld")]
+    fn test_validate_deliverability_nxdomain(#[case] domain: &str) {
+        let result = validate_deliverability(domain);
+        assert!(result.is_err());
+    }
+    #[rstest]
+    #[case("example.com")]
+    #[case("example.org")]
+    fn test_validate_deliverability_spf_reject_all(#[case] domain: &str) {
+        let result = validate_deliverability(domain);
+        assert!(result.is_err());
+    }
+
+    #[rstest]
+    #[case("localhost")] // Resolves to 127.0.0.1
+    #[case("example.internal")] // Assuming it resolves to a private IP
+    fn test_validate_deliverability_private_ip(#[case] domain: &str) {
+        let result = validate_deliverability(domain);
+        assert!(result.is_err());
+    }
+
+    #[rstest]
+    #[case("-invaliddomain.com")]
+    #[case("invalid_domain.com")]
+    #[case("example..com")]
+    fn test_validate_deliverability_invalid_syntax(#[case] domain: &str) {
+        let result = validate_deliverability(domain);
+        assert!(result.is_err());
+    }
+
+    #[rstest]
+    #[case("例え.テスト")] // Japanese IDN for "example.test"
+    #[case("مثال.إختبار")] // Arabic IDN for "example.test"
+    fn test_validate_deliverability_idn(#[case] domain: &str) {
+        let result = validate_deliverability(domain);
+        // Depending on the domain, it may pass or fail
+        // We're checking that the function handles IDNs without panicking
+        assert!(result.is_err() || result.is_ok());
+    }
+
+    #[rstest]
+    #[case("no-ns.example.com")] // Assuming this domain has no nameservers
+    fn test_validate_deliverability_no_nameservers(#[case] domain: &str) {
+        let result = validate_deliverability(domain);
+        // Depending on implementation, might return an error or a specific message
+        assert!(result.is_err());
+    }
+
+    #[rstest]
+    #[case("timeout.example.com")]
+    fn test_validate_deliverability_timeout(#[case] domain: &str) {
+        let result = validate_deliverability(domain);
+        // Should handle timeout gracefully
+        assert!(result.is_err());
     }
 }

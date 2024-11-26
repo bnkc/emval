@@ -13,6 +13,8 @@ pub struct ValidatedEmail {
     pub domain_address: Option<IpAddr>,
     #[pyo3(get)]
     pub domain_name: String,
+    #[pyo3(get)]
+    pub is_deliverable: bool,
 }
 
 #[derive(Default)]
