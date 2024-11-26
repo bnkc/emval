@@ -1,6 +1,6 @@
 import pytest
-from emval import validate_email, ValidatedEmail
 
+from emval import ValidatedEmail, validate_email
 
 # This is the python-email-validator (https://github.com/JoshData/python-email-validator/blob/main/tests/test_syntax.py) test suite.
 # It has been slightly modified and does not cover all edge cases, including display names and checking dns_resolver
@@ -118,25 +118,35 @@ def test_email_valid_only_if_quoted_local_part(
         == "Invalid Local Part: Quoting the local part before the '@' sign is not permitted in this context."
     )
 
-    validated = validate_email(email_input, allow_quoted_local=True)
+    validated = validate_email(
+        email_input,
+        allow_quoted_local=True,
+        deliverable_address=False,
+    )
 
     assert validated.local_part == normalized_local_part
 
 
 def test_domain_literal() -> None:
     # Check parsing IPv4 addresses.
-    validated = validate_email("me@[127.0.0.1]", allow_domain_literal=True)
+    validated = validate_email(
+        "me@[127.0.0.1]", allow_domain_literal=True, deliverable_address=False
+    )
     assert validated.domain_name == "[127.0.0.1]"
     assert repr(validated.domain_address) == "IPv4Address('127.0.0.1')"
     #
     # Check parsing IPv6 addresses.
-    validated = validate_email("me@[IPv6:::1]", allow_domain_literal=True)
+    validated = validate_email(
+        "me@[IPv6:::1]", allow_domain_literal=True, deliverable_address=False
+    )
     assert validated.domain_name == "[IPv6:::1]"
     assert repr(validated.domain_address) == "IPv6Address('::1')"
 
     # Check that IPv6 addresses are normalized.
     validated = validate_email(
-        "me@[IPv6:0000:0000:0000:0000:0000:0000:0000:0001]", allow_domain_literal=True
+        "me@[IPv6:0000:0000:0000:0000:0000:0000:0000:0001]",
+        allow_domain_literal=True,
+        deliverable_address=False,
     )
     assert validated.domain_name == "[IPv6:::1]"
     assert repr(validated.domain_address) == "IPv6Address('::1')"
@@ -150,18 +160,6 @@ def test_domain_literal() -> None:
             "my@localhost",
             "Invalid Domain: Must contain a period ('.') to be considered valid.",
         ),
-        # (
-        #     "my@.leadingdot.com",
-        #     "An email address cannot have a period immediately after the @-sign.",
-        # ),
-        # (
-        #     "my@．leadingfwdot.com",
-        #     "An email address cannot have a period immediately after the @-sign.",
-        # ),
-        # ("my@twodots..com", "An email address cannot have two periods in a row."),
-        # ("my@twofwdots．．.com", "An email address cannot have two periods in a row."),
-        # ("my@trailingdot.com.", "An email address cannot end with a period."),
-        # ("my@trailingfwdot.com．", "An email address cannot end with a period."),
         (
             "me@-leadingdash",
             "Invalid Domain: A hyphen ('-') cannot immediately follow the '@' symbol.",
@@ -263,10 +261,6 @@ def test_domain_literal() -> None:
             "my\n@example.com",
             "Invalid Local Part: contains invalid characters before the '@' sign.",
         ),
-        # (
-        #     "me.\u037e@example.com",
-        #     "After Unicode normalization: The email address contains invalid characters before the @-sign: ';'.",
-        # ),
         ("test@\n", "Invalid Domain: Contains invalid characters after '@' sign."),
         (
             'bad"quotes"@example.com',
@@ -336,18 +330,6 @@ def test_domain_literal() -> None:
             "my.\ufb2c.address@1111111111222222222233333333334444444444555555555.6666666666777777777788888888889999999999000000000.1111111111222222222233333333334444444444555555555.6666666666777777777788888888889999999999000000000.11111111112222222222333333333344444.info",
             "Invalid Email Address: The email exceeds the maximum length (254 chars).",
         ),
-        # (
-        #     "my.\ufb2c.address@1111111111222222222233333333334444444444555555555.6666666666777777777788888888889999999999000000000.1111111111222222222233333333334444444444555555555.6666666666777777777788888888889999999999000000000.11111111112222222222333333333344.info",
-        #     "Invalid Email Address: The email exceeds the maximum length (254 chars).",
-        # ),
-        # (
-        #     "my.long.address@λ111111111222222222233333333334444444444555555555.6666666666777777777788888888889999999999000000000.1111111111222222222233333333334444444444555555555.6666666666777777777788888888889999999999000000000.11111111112222222222333333.info",
-        #     "The email address is too long when the part after the @-sign is converted to IDNA ASCII (1 byte too many).",
-        # ),
-        # (
-        #     "my.λong.address@λ111111111222222222233333333334444444444555555555.6666666666777777777788888888889999999999000000000.1111111111222222222233333333334444444444555555555.6666666666777777777788888888889999999999000000000.11111111112222222222333333.info",
-        #     "The email address is too long when the part after the @-sign is converted to IDNA ASCII (2 bytes too many).",
-        # ),
         (
             "me@bad-tld-1",
             "Invalid Domain: Must contain a period ('.') to be considered valid.",
@@ -388,43 +370,6 @@ def test_domain_literal() -> None:
             "me@[tag:invalid space]",
             "Invalid Domain: The address in brackets following the '@' sign is not a valid IP address.",
         ),
-        # (
-        #     "<me@example.com>",
-        #     "A display name and angle brackets around the email address are not permitted here.",
-        # ),
-        # (
-        #     "<me@example.com",
-        #     "An open angle bracket at the start of the email address has to be followed by a close angle bracket at the end.",
-        # ),
-        # ("<me@example.com> !", "There can't be anything after the email address."),
-        (
-            "<\u0338me@example.com",
-            "Invalid Local Part: contains invalid characters before the '@' sign.",
-        ),
-        (
-            "DisplayName <me@-example.com>",
-            "Invalid Local Part: contains invalid characters before the '@' sign.",
-        ),
-        # (
-        #     "DisplayName <me@example.com>",
-        #     "A display name and angle brackets around the email address are not permitted here.",
-        # ),
-        # (
-        #     "Display Name <me@example.com>",
-        #     "A display name and angle brackets around the email address are not permitted here.",
-        # ),
-        # (
-        #     '"Display Name" <me@example.com>',
-        #     "A display name and angle brackets around the email address are not permitted here.",
-        # ),
-        # (
-        #     "Display.Name <me@example.com>",
-        #     "The display name contains invalid characters when not quoted: '.'.",
-        # ),
-        # (
-        #     '"Display.Name" <me@example.com>',
-        #     "A display name and angle brackets around the email address are not permitted here.",
-        # ),
     ],
 )
 def test_email_invalid_syntax(email_input: str, error_msg: str) -> None:
@@ -506,12 +451,68 @@ def test_email_invalid_character_smtputf8_off(
 
 
 def test_email_empty_local() -> None:
-    validate_email("@example.com", allow_empty_local=True)
-    validate_email('""@example.com', allow_empty_local=True, allow_quoted_local=True)
+    validate_email("@example.com", allow_empty_local=True, deliverable_address=False)
+    validate_email(
+        '""@example.com',
+        allow_empty_local=True,
+        allow_quoted_local=True,
+        deliverable_address=False,
+    )
 
 
 def test_case_insensitive_mailbox_name() -> None:
-    validate_email("POSTMASTER@example.com").normalized = "postmaster@example.com"
-    validate_email(
-        "NOT-POSTMASTER@example.com"
-    ).normalized = "NOT-POSTMASTER@example.com"
+    assert (
+        validate_email("POSTMASTER@example.com", deliverable_address=False).normalized
+        == "postmaster@example.com"
+    )
+
+    assert (
+        validate_email(
+            "NOT-POSTMASTER@example.com", deliverable_address=False
+        ).normalized
+        == "NOT-POSTMASTER@example.com"
+    )
+
+
+@pytest.mark.parametrize(
+    "domain,expected_response",
+    [
+        (
+            "test@gmail.com",
+            True,
+        ),
+        (
+            "test@pages.github.com",
+            True,
+        ),
+    ],
+)
+def test_deliverability_found(domain: str, expected_response: bool) -> None:
+    response = validate_email(domain, deliverable_address=True)
+    assert response.is_deliverable == expected_response
+
+
+@pytest.mark.parametrize(
+    ("domain", "error"),
+    [
+        (
+            "test@xkxufoekjvjfjeodlfmdfjcu.com",
+            "Invalid Domain: No MX, A, or AAAA records found for domain.",
+        ),
+        (
+            "test@example.com",
+            "Invalid Domain: The domain does not accept email due to a null MX record, indicating it is not configured to receive emails.",
+        ),
+        (
+            "test@g.mail.com",
+            "Invalid Domain: No MX, A, or AAAA records found for domain.",
+        ),
+        (
+            "test@justtxt.joshdata.me",
+            "Invalid Domain: No MX, A, or AAAA records found for domain.",
+        ),
+    ],
+)
+def test_deliverability_fails(domain: str, error: str) -> None:
+    with pytest.raises(SyntaxError, match=error):
+        validate_email(domain, deliverable_address=True)

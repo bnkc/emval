@@ -1,6 +1,8 @@
 from typing import Union
-from .model import ValidatedEmail
+
 from emval import _emval
+
+from .model import ValidatedEmail
 
 
 class EmailValidator:
@@ -47,11 +49,6 @@ class EmailValidator:
 
         Returns:
             A ValidatedEmail instance if the email is valid.
-
-        Raises:
-            SyntaxError: If the email syntax is invalid.
-            DomainLiteralError: If domain literals are not allowed.
-            LengthError: If the email length exceeds the maximum allowed length.
         """
         validated_email = self._emval.validate_email(email)
         return ValidatedEmail(
@@ -60,6 +57,7 @@ class EmailValidator:
             local_part=validated_email.local_part,
             domain_name=validated_email.domain_name,
             domain_address=validated_email.domain_address,
+            is_deliverable=validated_email.is_deliverable,
         )
 
 
