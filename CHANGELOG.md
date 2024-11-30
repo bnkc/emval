@@ -15,7 +15,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Completed domain deliverability
 - Restructuring project
 - Update README.md
-- Update README.md
 
 ## [1.0.0] - 2024-08-08
 
