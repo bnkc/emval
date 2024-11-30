@@ -10,7 +10,7 @@ name = "_emval"
 crate-type = ["cdylib"]
 
 [dependencies]
-pyo3 = "0.22.4"
+pyo3 = "0.23.0"
 
 # emval dependencies
 idna = "1.0.2"
@@ -19,3 +19,4 @@ regex = "1.10.5"
 unicode-properties = "0.1.1"
 rstest = "0.21.0"
 unicode_names2 = "1.2.2"
+trust-dns-resolver = "0.23.2"
