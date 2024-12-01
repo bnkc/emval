@@ -1,11 +1,12 @@
 #![feature(ip)]
 #[macro_use]
 extern crate lazy_static;
-pub(crate) mod consts;
-pub(crate) mod errors;
-pub(crate) mod models;
-pub(crate) mod validators;
+mod consts;
+pub mod errors;
+mod models;
+mod validators;
 pub mod prelude {
+    pub use crate::errors::ValidationError;
     pub use crate::models::{EmailValidator, ValidatedEmail};
 }
 
