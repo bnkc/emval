@@ -20,3 +20,6 @@ unicode-properties = "0.1.1"
 rstest = "0.21.0"
 unicode_names2 = "1.2.2"
 trust-dns-resolver = "0.23.2"
+
+[profile.release]
+lto = true
