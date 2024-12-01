@@ -3,35 +3,12 @@ use crate::models::ValidatedEmail;
 
 use pyo3::prelude::*;
 
-#[pymethods]
 impl EmailValidator {
-    #[new]
-    #[pyo3(signature = (
-        allow_smtputf8 = true,
-        allow_empty_local = false,
-        allow_quoted_local = false,
-        allow_domain_literal = false,
-        deliverable_address = true,
-
-    ))]
-    fn new(
-        allow_smtputf8: bool,
-        allow_empty_local: bool,
-        allow_quoted_local: bool,
-        allow_domain_literal: bool,
-        deliverable_address: bool,
-    ) -> Self {
-        EmailValidator {
-            allow_smtputf8,
-            allow_empty_local,
-            allow_quoted_local,
-            allow_domain_literal,
-            deliverable_address,
-        }
-    }
-
-    fn validate_email(&self, email: &str) -> PyResult<ValidatedEmail> {
-        let (unvalidated_local_part, unvalidated_domain) = crate::validators::split_email(&email)?;
+    pub fn validate_email(
+        &self,
+        email: &str,
+    ) -> Result<ValidatedEmail, crate::errors::ValidationError> {
+        let (unvalidated_local_part, unvalidated_domain) = crate::validators::split_email(email)?;
 
         crate::validators::validate_email_length(&unvalidated_local_part, &unvalidated_domain)?;
 
@@ -61,6 +38,39 @@ impl EmailValidator {
             normalized,
             is_deliverable: true,
         })
+    }
+}
+
+#[pymethods]
+impl EmailValidator {
+    #[new]
+    #[pyo3(signature = (
+        allow_smtputf8 = true,
+        allow_empty_local = false,
+        allow_quoted_local = false,
+        allow_domain_literal = false,
+        deliverable_address = true,
+
+    ))]
+    pub fn new(
+        allow_smtputf8: bool,
+        allow_empty_local: bool,
+        allow_quoted_local: bool,
+        allow_domain_literal: bool,
+        deliverable_address: bool,
+    ) -> Self {
+        EmailValidator {
+            allow_smtputf8,
+            allow_empty_local,
+            allow_quoted_local,
+            allow_domain_literal,
+            deliverable_address,
+        }
+    }
+
+    #[pyo3(name = "validate_email")]
+    fn py_validate_email(&self, email: &str) -> PyResult<ValidatedEmail> {
+        self.validate_email(email).map_err(|e| e.into())
     }
 }
 
