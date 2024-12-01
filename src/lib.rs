@@ -2,9 +2,13 @@
 #[macro_use]
 extern crate lazy_static;
 mod consts;
-mod errors;
+pub mod errors;
 mod models;
 mod validators;
+pub mod prelude {
+    pub use crate::errors::ValidationError;
+    pub use crate::models::{EmailValidator, ValidatedEmail};
+}
 
 use pyo3::prelude::*;
 
