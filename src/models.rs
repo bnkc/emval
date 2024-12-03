@@ -24,7 +24,7 @@ pub struct ValidatedEmail {
     pub is_deliverable: bool,
 }
 
-#[derive(Default)]
+/// A structure for customizing email validation.
 #[pyclass]
 pub struct EmailValidator {
     /// Whether to allow SMTPUTF8. [Default: true]
@@ -37,4 +37,16 @@ pub struct EmailValidator {
     pub allow_domain_literal: bool,
     /// Whether to check if the email address is deliverable. [Default: true]
     pub deliverable_address: bool,
+}
+
+impl Default for EmailValidator {
+    fn default() -> Self {
+        Self {
+            allow_smtputf8: true,
+            allow_empty_local: false,
+            allow_quoted_local: false,
+            allow_domain_literal: false,
+            deliverable_address: true,
+        }
+    }
 }

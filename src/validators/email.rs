@@ -125,7 +125,13 @@ mod tests {
         Some("example-indeed@strange-example.com")
     )]
     fn test_validate_email_valid(#[case] email: &str, #[case] expected: Option<&str>) {
-        let emval = EmailValidator::default();
+        let emval = EmailValidator {
+            allow_smtputf8: false,
+            allow_empty_local: false,
+            allow_quoted_local: false,
+            allow_domain_literal: false,
+            deliverable_address: false,
+        };
         let result = emval.validate_email(email);
 
         match expected {
@@ -168,7 +174,13 @@ mod tests {
     #[case("POSTMASTER@example.com", Some("postmaster@example.com"))]
     #[case("NOT-POSTMASTER@example.com", Some("NOT-POSTMASTER@example.com"))]
     fn test_validate_email_case_insensitive(#[case] email: &str, #[case] expected: Option<&str>) {
-        let emval = EmailValidator::default();
+        let emval = EmailValidator {
+            allow_smtputf8: false,
+            allow_empty_local: false,
+            allow_quoted_local: false,
+            allow_domain_literal: false,
+            deliverable_address: false,
+        };
         let result = emval.validate_email(email);
 
         match expected {
@@ -210,7 +222,10 @@ mod tests {
     ) {
         let emval = EmailValidator {
             allow_domain_literal: true,
-            ..EmailValidator::default()
+            allow_smtputf8: false,
+            allow_empty_local: false,
+            allow_quoted_local: false,
+            deliverable_address: false,
         };
 
         let result = emval.validate_email(email);
