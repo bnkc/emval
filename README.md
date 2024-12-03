@@ -1,6 +1,6 @@
 # 📬 emval
 
-`emval` is a blazingly fast Python email validator written in Rust, offering performance improvements of 100-1000x over traditional validators.
+`emval` is a blazingly fast email validator written in Rust with Python bindings, offering performance improvements of 100-1000x over traditional validators.
 
 ![performance image](https://raw.githubusercontent.com/bnkc/emval/b90cc4a0ae24e329702872c4fb1cccf212d556a6/perf.svg)
 
@@ -23,11 +23,16 @@ Install `emval` from PyPI:
 pip install emval
 ```
 
+or use `emval` in a Rust project:
+```sh
+cargo add emval
+```
+
 ## Usage
 
 ### Quick Start
 
-To validate an email address:
+To validate an email address in Python:
 
 ```python
 from emval import validate_email, EmailValidator
@@ -42,6 +47,17 @@ try:
 except Exception as e:
     # Example: "Invalid Local Part: Quoting the local part before the '@' sign is not permitted in this context."
     print(str(e))
+```
+
+The same code in Rust:
+```rust
+use emval::{validate_email, ValidationError};
+
+fn main() -> Result<(), ValidationError> {
+    let email = "example@domain.com";
+    let val_email = validate_email(email)?;
+    let normalized_email = val_email.normalized;
+}
 ```
 
 ### Configurations
@@ -66,6 +82,24 @@ try:
     print(validated_email)
 except Exception as e:
     print(str(e))
+```
+
+The same code in Rust:
+```rust
+use emval::{EmailValidator, ValidationError};
+
+fn main() -> Result<(), ValidationError> {
+    let emval = EmailValidator {
+        allow_smtputf8: false,
+        allow_empty_local: true,
+        allow_quoted_local: true,
+        allow_domain_literal: true,
+        deliverable_address: false,
+    };
+
+    let email = "example@domain.com";
+    let validated_email = emval.validate_email(email)?;
+}
 ```
 
 ### Options
