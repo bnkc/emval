@@ -57,6 +57,7 @@ fn main() -> Result<(), ValidationError> {
     let email = "example@domain.com";
     let val_email = validate_email(email)?;
     let normalized_email = val_email.normalized;
+    Ok(())
 }
 ```
 
@@ -99,6 +100,7 @@ fn main() -> Result<(), ValidationError> {
 
     let email = "example@domain.com";
     let validated_email = emval.validate_email(email)?;
+    Ok(())
 }
 ```
 
