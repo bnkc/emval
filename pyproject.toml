@@ -23,6 +23,9 @@ classifiers = [
 ]
 dynamic = ["version"]
 
+[project.optional-dependencies]
+tests = ["pytest"]
+
 [tool.maturin]
 module-name = "emval._emval"
 features = ["pyo3/extension-module"]
