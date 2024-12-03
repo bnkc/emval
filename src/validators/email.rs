@@ -4,6 +4,18 @@ use crate::models::ValidatedEmail;
 use pyo3::prelude::*;
 
 impl EmailValidator {
+    /// Validates an email address.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use emval::EmailValidator;
+    ///
+    /// let validator = EmailValidator::default();
+    /// let validated_email = validator.validate_email("example@domain.com").unwrap();
+    /// assert!(validated_email.is_deliverable);
+    ///
+    /// ```
     pub fn validate_email(
         &self,
         email: &str,
@@ -43,6 +55,15 @@ impl EmailValidator {
 
 #[pymethods]
 impl EmailValidator {
+    /// Create a new email validator with the given settings.
+    ///
+    /// # Arguments
+    ///
+    /// * `allow_smtputf8`: Whether to allow SMTPUTF8. [Default: true]
+    /// * `allow_empty_local`: Whether to allow empty local part. [Default: false]
+    /// * `allow_quoted_local`: Whether to allow quoted local part. [Default: false]
+    /// * `allow_domain_literal`: Whether to allow domain literals. [Default: false]
+    /// * `deliverable_address`: Whether to check if the email address is deliverable. [Default: true]
     #[new]
     #[pyo3(signature = (
         allow_smtputf8 = true,
