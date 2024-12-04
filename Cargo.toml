@@ -10,7 +10,7 @@ name = "_emval"
 crate-type = ["cdylib"]
 
 [dependencies]
-pyo3 = "0.23.0"
+pyo3 = { version = "*", features = ["extension-module", "abi3-py38"] }
 
 # emval dependencies
 idna = "1.0.2"
@@ -20,3 +20,8 @@ unicode-properties = "0.1.1"
 rstest = "0.21.0"
 unicode_names2 = "1.2.2"
 trust-dns-resolver = "0.23.2"
+
+# polars dependencies
+pyo3-polars = { version = "*", features = ["derive", "dtype-struct"] }
+polars = { version = "*", default-features = false, features = ["dtype-struct"] }
+serde = { version = "*", features = ["derive"] }
