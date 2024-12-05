@@ -3,35 +3,24 @@ use crate::models::ValidatedEmail;
 
 use pyo3::prelude::*;
 
-#[pymethods]
 impl EmailValidator {
-    #[new]
-    #[pyo3(signature = (
-        allow_smtputf8 = true,
-        allow_empty_local = false,
-        allow_quoted_local = false,
-        allow_domain_literal = false,
-        deliverable_address = true,
-
-    ))]
-    fn new(
-        allow_smtputf8: bool,
-        allow_empty_local: bool,
-        allow_quoted_local: bool,
-        allow_domain_literal: bool,
-        deliverable_address: bool,
-    ) -> Self {
-        EmailValidator {
-            allow_smtputf8,
-            allow_empty_local,
-            allow_quoted_local,
-            allow_domain_literal,
-            deliverable_address,
-        }
-    }
-
-    fn validate_email(&self, email: &str) -> PyResult<ValidatedEmail> {
-        let (unvalidated_local_part, unvalidated_domain) = crate::validators::split_email(&email)?;
+    /// Validates an email address.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use emval::EmailValidator;
+    ///
+    /// let validator = EmailValidator::default();
+    /// let validated_email = validator.validate_email("example@domain.com").unwrap();
+    /// assert!(validated_email.is_deliverable);
+    ///
+    /// ```
+    pub fn validate_email(
+        &self,
+        email: &str,
+    ) -> Result<ValidatedEmail, crate::errors::ValidationError> {
+        let (unvalidated_local_part, unvalidated_domain) = crate::validators::split_email(email)?;
 
         crate::validators::validate_email_length(&unvalidated_local_part, &unvalidated_domain)?;
 
@@ -61,6 +50,48 @@ impl EmailValidator {
             normalized,
             is_deliverable: true,
         })
+    }
+}
+
+#[pymethods]
+impl EmailValidator {
+    /// Create a new email validator with the given settings.
+    ///
+    /// # Arguments
+    ///
+    /// * `allow_smtputf8`: Whether to allow SMTPUTF8. [Default: true]
+    /// * `allow_empty_local`: Whether to allow empty local part. [Default: false]
+    /// * `allow_quoted_local`: Whether to allow quoted local part. [Default: false]
+    /// * `allow_domain_literal`: Whether to allow domain literals. [Default: false]
+    /// * `deliverable_address`: Whether to check if the email address is deliverable. [Default: true]
+    #[new]
+    #[pyo3(signature = (
+        allow_smtputf8 = true,
+        allow_empty_local = false,
+        allow_quoted_local = false,
+        allow_domain_literal = false,
+        deliverable_address = true,
+
+    ))]
+    pub fn new(
+        allow_smtputf8: bool,
+        allow_empty_local: bool,
+        allow_quoted_local: bool,
+        allow_domain_literal: bool,
+        deliverable_address: bool,
+    ) -> Self {
+        EmailValidator {
+            allow_smtputf8,
+            allow_empty_local,
+            allow_quoted_local,
+            allow_domain_literal,
+            deliverable_address,
+        }
+    }
+
+    #[pyo3(name = "validate_email")]
+    fn py_validate_email(&self, email: &str) -> PyResult<ValidatedEmail> {
+        self.validate_email(email).map_err(|e| e.into())
     }
 }
 
@@ -94,7 +125,13 @@ mod tests {
         Some("example-indeed@strange-example.com")
     )]
     fn test_validate_email_valid(#[case] email: &str, #[case] expected: Option<&str>) {
-        let emval = EmailValidator::default();
+        let emval = EmailValidator {
+            allow_smtputf8: false,
+            allow_empty_local: false,
+            allow_quoted_local: false,
+            allow_domain_literal: false,
+            deliverable_address: false,
+        };
         let result = emval.validate_email(email);
 
         match expected {
@@ -137,7 +174,13 @@ mod tests {
     #[case("POSTMASTER@example.com", Some("postmaster@example.com"))]
     #[case("NOT-POSTMASTER@example.com", Some("NOT-POSTMASTER@example.com"))]
     fn test_validate_email_case_insensitive(#[case] email: &str, #[case] expected: Option<&str>) {
-        let emval = EmailValidator::default();
+        let emval = EmailValidator {
+            allow_smtputf8: false,
+            allow_empty_local: false,
+            allow_quoted_local: false,
+            allow_domain_literal: false,
+            deliverable_address: false,
+        };
         let result = emval.validate_email(email);
 
         match expected {
@@ -179,7 +222,10 @@ mod tests {
     ) {
         let emval = EmailValidator {
             allow_domain_literal: true,
-            ..EmailValidator::default()
+            allow_smtputf8: false,
+            allow_empty_local: false,
+            allow_quoted_local: false,
+            deliverable_address: false,
         };
 
         let result = emval.validate_email(email);

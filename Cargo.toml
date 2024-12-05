@@ -3,11 +3,17 @@ name = "emval"
 version = "0.1.4"
 description = "emval is a blazingly fast email validator"
 edition = "2021"
+license-file = "LICENSE"
+homepage = "https://github.com/bnkc/emval"
+repository = "https://github.com/bnkc/emval"
+readme = "README.md"
+keywords = ["email", "validation"]
+categories = ["email"]
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 [lib]
-name = "_emval"
-crate-type = ["cdylib"]
+name = "emval"
+crate-type = ["cdylib", "rlib"]
 
 [dependencies]
 pyo3 = "0.23.0"
