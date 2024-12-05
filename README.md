@@ -1,7 +1,7 @@
 # 📬 emval
 
 <p align="center">
-  <a href="LICENSE-MIT" alt="License">
+  <a href="LICENSE" alt="License">
     <img alt="GitHub License" src="https://img.shields.io/github/license/bnkc/emval?style=for-the-badge"></a>
   <a href="https://github.com/bnkc/emval/releases" alt="Releases">
     <img alt="GitHub Release" src="https://img.shields.io/github/v/release/bnkc/emval?style=for-the-badge&logo=github"></a>
