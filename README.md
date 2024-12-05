@@ -1,5 +1,22 @@
 # 📬 emval
 
+<p align="center">
+  <a href="LICENSE-MIT" alt="License">
+    <img alt="GitHub License" src="https://img.shields.io/github/license/bnkc/emval?style=for-the-badge"></a>
+  <a href="https://github.com/bnkc/emval/releases" alt="Releases">
+    <img alt="GitHub Release" src="https://img.shields.io/github/v/release/bnkc/emval?style=for-the-badge&logo=github"></a>
+  <a href="https://github.com/bnkc/emval/commits/main/" alt="Latest Commits">
+    <img alt="GitHub last commit" src="https://img.shields.io/github/last-commit/bnkc/emval?style=for-the-badge&logo=github"></a>
+  <a href="https://github.com/bnkc/emval/actions" alt="Build Status">
+    <img alt="GitHub Actions Workflow Status" src="https://img.shields.io/github/actions/workflow/status/bnkc/emval/CI.yml?style=for-the-badge&logo=github"></a>
+  <a href="https://crates.io/crates/emval" alt="bnkc on crates.io">
+    <img alt="Crates.io Version" src="https://img.shields.io/crates/v/emval?style=for-the-badge&logo=rust&logoColor=red&color=red"></a>
+  <a href="https://docs.rs/emval" alt="Rustitude documentation on docs.rs">
+    <img alt="docs.rs" src="https://img.shields.io/docsrs/emval?style=for-the-badge&logo=rust&logoColor=red"></a>
+  <a href="https://pypi.org/project/emval/" alt="PyPI">
+    <img alt="PyPI" src="https://img.shields.io/pypi/v/emval?style=for-the-badge&logo=pypi&logoColor=yellow"></a>
+</p>
+
 `emval` is a blazingly fast email validator written in Rust with Python bindings, offering performance improvements of 100-1000x over traditional validators.
 
 ![performance image](https://raw.githubusercontent.com/bnkc/emval/b90cc4a0ae24e329702872c4fb1cccf212d556a6/perf.svg)
