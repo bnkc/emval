@@ -101,7 +101,7 @@ dependencies = [
 
 [[package]]
 name = "emval"
-version = "0.1.4"
+version = "0.1.5"
 dependencies = [
  "idna 1.0.3",
  "lazy_static",
