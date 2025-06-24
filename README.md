@@ -91,6 +91,7 @@ emval = EmailValidator(
     allow_quoted_local=True,
     allow_domain_literal=True,
     deliverable_address=False,
+    allowed_special_domains=['test', 'invalid'],
 )
 
 email = "user@[192.168.1.1]"
@@ -113,6 +114,7 @@ fn main() -> Result<(), ValidationError> {
         allow_quoted_local: true,
         allow_domain_literal: true,
         deliverable_address: false,
+        allowed_special_domains: vec!["test".to_string(), "invalid".to_string()],
     };
 
     let email = "example@domain.com";
@@ -128,6 +130,7 @@ fn main() -> Result<(), ValidationError> {
 - `allow_quoted_local`: Allows quoted local parts (e.g., `"user name"@domain.com`).
 - `allow_domain_literal`: Allows domain literals (e.g., `[192.168.0.1]`).
 - `deliverable_address`: Checks if the email address is deliverable by verifying the domain's MX records.
+- `allowed_special_domains`: List of special-use domains to allow despite being reserved (e.g., `['test', 'invalid']`).
 
 ## Technical Details
 
