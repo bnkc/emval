@@ -10,7 +10,7 @@ use trust_dns_resolver::Resolver;
 pub fn validate_domain(
     validator: &EmailValidator,
     domain: &str,
-) -> Result<(String, Option<IpAddr>), ValidationError> {
+) -> Result<(String, Option<IpAddr>, bool), ValidationError> {
     // Guard clause if domain is being executed independently
     if domain.is_empty() {
         return Err(ValidationError::SyntaxError(
@@ -39,7 +39,7 @@ pub fn validate_domain(
                     )
                 })?;
             if let IpAddr::V6(addr) = addr {
-                return Ok((format!("[IPv6:{}]", addr), Some(IpAddr::V6(addr))));
+                return Ok((format!("[IPv6:{}]", addr), Some(IpAddr::V6(addr)), false));
             }
         }
 
@@ -56,7 +56,7 @@ pub fn validate_domain(
             IpAddr::V6(_) => format!("[IPv6:{}]", addr),
         };
 
-        return Ok((name, Some(addr)));
+        return Ok((name, Some(addr), false));
     }
 
     // Check for invalid characters in the domain part
@@ -148,26 +148,31 @@ pub fn validate_domain(
         }
     }
 
-    // Check for reserved and "special use" domains
-    for &special_domain in crate::consts::SPECIAL_USE_DOMAIN_NAMES {
-        if normalized_domain == special_domain
-            || normalized_domain.ends_with(&format!(".{}", special_domain))
-        {
-            // Check if this special domain is in the allowed list
-            let is_allowed = validator.allowed_special_domains.iter().any(|allowed| {
-                allowed == special_domain ||
-                normalized_domain == *allowed ||
-                normalized_domain.ends_with(&format!(".{}", allowed))
+    let maybe_special_domain =
+        crate::consts::SPECIAL_USE_DOMAIN_NAMES
+            .iter()
+            .find(|special_domain| {
+                normalized_domain == **special_domain
+                    || normalized_domain.ends_with(&format!(".{}", special_domain))
             });
-            
-            if !is_allowed {
-                return Err(ValidationError::SyntaxError(
+
+    if let Some(special) = maybe_special_domain {
+        // Check if this special domain is in the allowed list
+        let is_allowed = validator
+            .allowed_special_domains
+            .iter()
+            .any(|allowed| allowed == special);
+
+        if !is_allowed {
+            Err(ValidationError::SyntaxError(
                         "Invalid Domain: The part after the '@' sign is a reserved or special-use domain that cannot be used.".to_string(),
-                ));
-            }
+                ))
+        } else {
+            Ok((normalized_domain.to_string(), None, true))
         }
+    } else {
+        Ok((normalized_domain.to_string(), None, false))
     }
-    Ok((normalized_domain.to_string(), None))
 }
 
 pub fn validate_deliverability(domain: &str) -> Result<(), ValidationError> {

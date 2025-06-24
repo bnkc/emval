@@ -33,18 +33,11 @@ impl EmailValidator {
             valid_local_part = valid_local_part.to_lowercase();
         }
 
-        let (domain_name, domain_address) =
+        let (domain_name, domain_address, is_whitelisted_special_domain) =
             crate::validators::validate_domain(self, &unvalidated_domain)?;
 
-        if self.deliverable_address {
-            // Skip deliverability checks for allowed special domains
-            let is_allowed_special_domain = self.allowed_special_domains.iter().any(|allowed| {
-                domain_name == *allowed || domain_name.ends_with(&format!(".{}", allowed))
-            });
-
-            if !is_allowed_special_domain {
-                crate::validators::validate_deliverability(&domain_name)?;
-            }
+        if self.deliverable_address && !is_whitelisted_special_domain {
+            crate::validators::validate_deliverability(&domain_name)?;
         }
 
         let normalized = format!("{}@{}", valid_local_part, domain_name);
