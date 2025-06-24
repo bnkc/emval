@@ -37,7 +37,14 @@ impl EmailValidator {
             crate::validators::validate_domain(self, &unvalidated_domain)?;
 
         if self.deliverable_address {
-            crate::validators::validate_deliverability(&domain_name)?;
+            // Skip deliverability checks for allowed special domains
+            let is_allowed_special_domain = self.allowed_special_domains.iter().any(|allowed| {
+                domain_name == *allowed || domain_name.ends_with(&format!(".{}", allowed))
+            });
+
+            if !is_allowed_special_domain {
+                crate::validators::validate_deliverability(&domain_name)?;
+            }
         }
 
         let normalized = format!("{}@{}", valid_local_part, domain_name);
@@ -64,6 +71,7 @@ impl EmailValidator {
     /// * `allow_quoted_local`: Whether to allow quoted local part. [Default: false]
     /// * `allow_domain_literal`: Whether to allow domain literals. [Default: false]
     /// * `deliverable_address`: Whether to check if the email address is deliverable. [Default: true]
+    /// * `allowed_special_domains`: Special-use domains to allow despite being in the reserved list. [Default: empty]
     #[new]
     #[pyo3(signature = (
         allow_smtputf8 = true,
@@ -71,6 +79,7 @@ impl EmailValidator {
         allow_quoted_local = false,
         allow_domain_literal = false,
         deliverable_address = true,
+        allowed_special_domains = None,
 
     ))]
     pub fn new(
@@ -79,6 +88,7 @@ impl EmailValidator {
         allow_quoted_local: bool,
         allow_domain_literal: bool,
         deliverable_address: bool,
+        allowed_special_domains: Option<Vec<String>>,
     ) -> Self {
         EmailValidator {
             allow_smtputf8,
@@ -86,6 +96,7 @@ impl EmailValidator {
             allow_quoted_local,
             allow_domain_literal,
             deliverable_address,
+            allowed_special_domains: allowed_special_domains.unwrap_or_default(),
         }
     }
 
@@ -131,6 +142,7 @@ mod tests {
             allow_quoted_local: false,
             allow_domain_literal: false,
             deliverable_address: false,
+            allowed_special_domains: Vec::new(),
         };
         let result = emval.validate_email(email);
 
@@ -180,6 +192,7 @@ mod tests {
             allow_quoted_local: false,
             allow_domain_literal: false,
             deliverable_address: false,
+            allowed_special_domains: Vec::new(),
         };
         let result = emval.validate_email(email);
 
@@ -226,6 +239,7 @@ mod tests {
             allow_empty_local: false,
             allow_quoted_local: false,
             deliverable_address: false,
+            allowed_special_domains: Vec::new(),
         };
 
         let result = emval.validate_email(email);
@@ -233,5 +247,44 @@ mod tests {
         let validated_email = result.unwrap();
         assert_eq!(validated_email.domain_name, expected_domain);
         assert_eq!(validated_email.domain_address, expected_ip);
+    }
+
+    #[rstest]
+    #[case("user@anon.com.test", vec!["test".to_string()])]
+    #[case("user@anon.com.invalid", vec!["invalid".to_string()])]
+    #[case("user@example.test", vec!["test".to_string()])]
+    #[case("user@example.invalid", vec!["invalid".to_string()])]
+    fn test_validate_allowed_special_domains(
+        #[case] email: &str,
+        #[case] allowed_domains: Vec<String>,
+    ) {
+        let emval = EmailValidator {
+            allow_smtputf8: false,
+            allow_empty_local: false,
+            allow_quoted_local: false,
+            allow_domain_literal: false,
+            deliverable_address: true,
+            allowed_special_domains: allowed_domains,
+        };
+
+        let result = emval.validate_email(email);
+        assert!(result.is_ok());
+    }
+
+    #[rstest]
+    #[case("user@anon.com.test")]
+    #[case("user@anon.com.invalid")]
+    fn test_validate_blocked_special_domains_without_allowlist(#[case] email: &str) {
+        let emval = EmailValidator {
+            allow_smtputf8: false,
+            allow_empty_local: false,
+            allow_quoted_local: false,
+            allow_domain_literal: false,
+            deliverable_address: false,
+            allowed_special_domains: Vec::new(), // Empty allowlist
+        };
+
+        let result = emval.validate_email(email);
+        assert!(result.is_err());
     }
 }

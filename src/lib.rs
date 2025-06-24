@@ -96,6 +96,7 @@
 //!         allow_quoted_local: true,
 //!         allow_domain_literal: true,
 //!         deliverable_address: false,
+//!         allowed_special_domains: Vec::new(),
 //!     };
 //!
 //!     let email = "example@domain.com";

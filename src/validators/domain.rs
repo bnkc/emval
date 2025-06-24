@@ -153,9 +153,18 @@ pub fn validate_domain(
         if normalized_domain == special_domain
             || normalized_domain.ends_with(&format!(".{}", special_domain))
         {
-            return Err(ValidationError::SyntaxError(
-                    "Invalid Domain: The part after the '@' sign is a reserved or special-use domain that cannot be used.".to_string(),
-            ));
+            // Check if this special domain is in the allowed list
+            let is_allowed = validator.allowed_special_domains.iter().any(|allowed| {
+                allowed == special_domain ||
+                normalized_domain == *allowed ||
+                normalized_domain.ends_with(&format!(".{}", allowed))
+            });
+            
+            if !is_allowed {
+                return Err(ValidationError::SyntaxError(
+                        "Invalid Domain: The part after the '@' sign is a reserved or special-use domain that cannot be used.".to_string(),
+                ));
+            }
         }
     }
     Ok((normalized_domain.to_string(), None))

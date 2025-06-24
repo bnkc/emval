@@ -37,6 +37,8 @@ pub struct EmailValidator {
     pub allow_domain_literal: bool,
     /// Whether to check if the email address is deliverable. [Default: true]
     pub deliverable_address: bool,
+    /// Special-use domains to allow despite being in the reserved list. [Default: empty]
+    pub allowed_special_domains: Vec<String>,
 }
 
 impl Default for EmailValidator {
@@ -47,6 +49,7 @@ impl Default for EmailValidator {
             allow_quoted_local: false,
             allow_domain_literal: false,
             deliverable_address: true,
+            allowed_special_domains: Vec::new(),
         }
     }
 }
