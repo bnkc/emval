@@ -79,7 +79,7 @@ impl EmailValidator {
         allow_quoted_local = false,
         allow_domain_literal = false,
         deliverable_address = true,
-        allowed_special_domains = None,
+        allowed_special_domains = vec![],
 
     ))]
     pub fn new(
@@ -88,7 +88,7 @@ impl EmailValidator {
         allow_quoted_local: bool,
         allow_domain_literal: bool,
         deliverable_address: bool,
-        allowed_special_domains: Option<Vec<String>>,
+        allowed_special_domains: Vec<String>,
     ) -> Self {
         EmailValidator {
             allow_smtputf8,
@@ -96,7 +96,7 @@ impl EmailValidator {
             allow_quoted_local,
             allow_domain_literal,
             deliverable_address,
-            allowed_special_domains: allowed_special_domains.unwrap_or_default(),
+            allowed_special_domains: allowed_special_domains,
         }
     }
 
