@@ -1,6 +1,6 @@
 [package]
 name = "emval"
-version = "0.1.6"
+version = "0.1.7"
 description = "emval is a blazingly fast email validator"
 edition = "2021"
 license-file = "LICENSE"
