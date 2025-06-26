@@ -16,7 +16,7 @@ name = "emval"
 crate-type = ["cdylib", "rlib"]
 
 [dependencies]
-pyo3 = "0.23.0"
+pyo3 = "0.23.5"
 
 # emval dependencies
 idna = "1.0.2"
