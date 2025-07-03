@@ -1,9 +1,9 @@
 [package]
 name = "emval"
-version = "0.1.7"
+version = "0.1.8"
 description = "emval is a blazingly fast email validator"
 edition = "2021"
-license-file = "LICENSE"
+license = "MIT"
 homepage = "https://github.com/bnkc/emval"
 repository = "https://github.com/bnkc/emval"
 readme = "README.md"
