@@ -30,7 +30,7 @@ impl EmailValidator {
         }
     }
 
-    fn validate_email(&self, email: &str) -> PyResult<ValidatedEmail> {
+    pub fn validate_email(&self, email: &str) -> PyResult<ValidatedEmail> {
         let (unvalidated_local_part, unvalidated_domain) = crate::validators::split_email(&email)?;
 
         crate::validators::validate_email_length(&unvalidated_local_part, &unvalidated_domain)?;
