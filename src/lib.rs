@@ -5,6 +5,7 @@ mod consts;
 mod errors;
 mod models;
 mod validators;
+mod polars_plugin;
 
 use pyo3::prelude::*;
 
