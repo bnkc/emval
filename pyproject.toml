@@ -27,6 +27,15 @@ dynamic = ["version"]
 module-name = "emval._emval"
 features = ["pyo3/extension-module"]
 
+
+[project.optional-dependencies]
+tests = ["pytest"]
+
+
+polars = [
+  "polars>=1.32.2"
+]
+
 [project.urls]
 Homepage = "https://github.com/bnkc/emval"
 Issues = "https://github.com/bnkc/emval/issues"
