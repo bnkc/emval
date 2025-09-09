@@ -153,13 +153,11 @@
 //!
 //! emval is licensed under the [MIT License](https://opensource.org/licenses/MIT). See the [LICENSE](https://github.com/bnkc/emval/blob/main/LICENSE) file for more details.
 
-#![feature(ip)]
-#[macro_use]
-extern crate lazy_static;
 mod consts;
 pub mod errors;
 mod models;
 mod validators;
+pub(crate) mod util;
 
 pub use crate::errors::ValidationError;
 pub use crate::models::{EmailValidator, ValidatedEmail};

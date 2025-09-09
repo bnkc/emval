@@ -6,6 +6,7 @@ use std::net::IpAddr;
 use std::str::FromStr;
 use trust_dns_resolver::config::*;
 use trust_dns_resolver::Resolver;
+use crate::util::ip_addr_ext::IpAddrExt;
 
 pub fn validate_domain(
     validator: &EmailValidator,
@@ -199,12 +200,12 @@ pub fn validate_deliverability(domain: &str) -> Result<(), ValidationError> {
 
     // Fallback to A/AAAA records
     if let Ok(a_records) = resolver.ipv4_lookup(domain) {
-        if a_records.iter().any(|ip| ip.is_global()) {
+        if a_records.iter().any(|ip| IpAddrExt::is_global(&ip.0)) {
             return Ok(());
         }
     }
     if let Ok(aaaa_records) = resolver.ipv6_lookup(domain) {
-        if aaaa_records.iter().any(|ip| ip.is_global()) {
+        if aaaa_records.iter().any(|ip| IpAddrExt::is_global(&ip.0)) {
             return Ok(());
         }
     }
