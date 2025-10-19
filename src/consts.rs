@@ -1,4 +1,5 @@
 use std::usize;
+use lazy_static::lazy_static;
 
 use regex::bytes::Regex;
 

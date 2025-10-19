@@ -1,9 +1,12 @@
 use pyo3::exceptions::{PySyntaxError, PyValueError};
 use pyo3::prelude::*;
 
+/// An error enum for email validation.
 #[derive(Debug)]
 pub enum ValidationError {
+    /// A syntax error.
     SyntaxError(String),
+    /// An error involving some input value.
     ValueError(String),
 }
 

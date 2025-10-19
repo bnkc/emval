@@ -1,6 +1,23 @@
 # 📬 emval
 
-`emval` is a blazingly fast Python email validator written in Rust, offering performance improvements of 100-1000x over traditional validators.
+<p align="center">
+  <a href="LICENSE" alt="License">
+    <img alt="GitHub License" src="https://img.shields.io/github/license/bnkc/emval?style=for-the-badge"></a>
+  <a href="https://github.com/bnkc/emval/releases" alt="Releases">
+    <img alt="GitHub Release" src="https://img.shields.io/github/v/release/bnkc/emval?style=for-the-badge&logo=github"></a>
+  <a href="https://github.com/bnkc/emval/commits/main/" alt="Latest Commits">
+    <img alt="GitHub last commit" src="https://img.shields.io/github/last-commit/bnkc/emval?style=for-the-badge&logo=github"></a>
+  <a href="https://github.com/bnkc/emval/actions" alt="Build Status">
+    <img alt="GitHub Actions Workflow Status" src="https://img.shields.io/github/actions/workflow/status/bnkc/emval/CI.yml?style=for-the-badge&logo=github"></a>
+  <a href="https://crates.io/crates/emval" alt="bnkc on crates.io">
+    <img alt="Crates.io Version" src="https://img.shields.io/crates/v/emval?style=for-the-badge&logo=rust&logoColor=red&color=red"></a>
+  <a href="https://docs.rs/emval" alt="Rustitude documentation on docs.rs">
+    <img alt="docs.rs" src="https://img.shields.io/docsrs/emval?style=for-the-badge&logo=rust&logoColor=red"></a>
+  <a href="https://pypi.org/project/emval/" alt="PyPI">
+    <img alt="PyPI" src="https://img.shields.io/pypi/v/emval?style=for-the-badge&logo=pypi&logoColor=yellow"></a>
+</p>
+
+`emval` is a blazingly fast email validator written in Rust with Python bindings, offering performance improvements of 100-1000x over traditional validators.
 
 ![performance image](https://raw.githubusercontent.com/bnkc/emval/b90cc4a0ae24e329702872c4fb1cccf212d556a6/perf.svg)
 
@@ -23,11 +40,16 @@ Install `emval` from PyPI:
 pip install emval
 ```
 
+or use `emval` in a Rust project:
+```sh
+cargo add emval
+```
+
 ## Usage
 
 ### Quick Start
 
-To validate an email address:
+To validate an email address in Python:
 
 ```python
 from emval import validate_email, EmailValidator
@@ -44,6 +66,18 @@ except Exception as e:
     print(str(e))
 ```
 
+The same code in Rust:
+```rust
+use emval::{validate_email, ValidationError};
+
+fn main() -> Result<(), ValidationError> {
+    let email = "example@domain.com";
+    let val_email = validate_email(email)?;
+    let normalized_email = val_email.normalized;
+    Ok(())
+}
+```
+
 ### Configurations
 
 Customize email validation behavior using the `EmailValidator` class:
@@ -57,6 +91,7 @@ emval = EmailValidator(
     allow_quoted_local=True,
     allow_domain_literal=True,
     deliverable_address=False,
+    allowed_special_domains=['test', 'invalid'],
 )
 
 email = "user@[192.168.1.1]"
@@ -68,6 +103,26 @@ except Exception as e:
     print(str(e))
 ```
 
+The same code in Rust:
+```rust
+use emval::{EmailValidator, ValidationError};
+
+fn main() -> Result<(), ValidationError> {
+    let emval = EmailValidator {
+        allow_smtputf8: false,
+        allow_empty_local: true,
+        allow_quoted_local: true,
+        allow_domain_literal: true,
+        deliverable_address: false,
+        allowed_special_domains: vec!["test".to_string(), "invalid".to_string()],
+    };
+
+    let email = "example@domain.com";
+    let validated_email = emval.validate_email(email)?;
+    Ok(())
+}
+```
+
 ### Options
 
 - `allow_smtputf8`: Allows internationalized email addresses.
@@ -75,6 +130,7 @@ except Exception as e:
 - `allow_quoted_local`: Allows quoted local parts (e.g., `"user name"@domain.com`).
 - `allow_domain_literal`: Allows domain literals (e.g., `[192.168.0.1]`).
 - `deliverable_address`: Checks if the email address is deliverable by verifying the domain's MX records.
+- `allowed_special_domains`: List of special-use domains to allow despite being reserved (e.g., `['test', 'invalid']`).
 
 ## Technical Details
 

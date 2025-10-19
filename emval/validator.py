@@ -1,4 +1,4 @@
-from typing import Union
+from typing import List, Union
 
 from emval import _emval
 
@@ -21,6 +21,8 @@ class EmailValidator:
         Default is False.
         deliverable_address (bool): Whether to check if the email address is \
         deliverable. Default is True.
+        allowed_special_domains (List[str]): Special-use domains to allow \
+        despite being in the reserved list. Default is empty list.
 
     """
 
@@ -31,6 +33,7 @@ class EmailValidator:
         allow_quoted_local: bool = False,
         allow_domain_literal: bool = False,
         deliverable_address: bool = True,
+        allowed_special_domains: List[str] = [],
     ):
         self._emval = _emval.EmailValidator(
             allow_smtputf8,
@@ -38,6 +41,7 @@ class EmailValidator:
             allow_quoted_local,
             allow_domain_literal,
             deliverable_address,
+            allowed_special_domains,
         )
 
     def validate_email(self, email: Union[str, bytes]) -> ValidatedEmail:
@@ -68,6 +72,7 @@ def validate_email(
     allow_quoted_local: bool = False,
     allow_domain_literal: bool = False,
     deliverable_address: bool = True,
+    allowed_special_domains: List[str] = [],
 ) -> ValidatedEmail:
     """
     Validates an email address with optional parameters.
@@ -83,6 +88,8 @@ def validate_email(
         Default is False.
         deliverable_address (bool): Whether to check if the email address is \
         deliverable. Default is True.
+        allowed_special_domains (List[str]): Special-use domains to allow \
+        despite being in the reserved list. Default is empty list.
 
     Returns:
         ValidatedEmail: An instance if the email is valid.
@@ -93,5 +100,6 @@ def validate_email(
         allow_quoted_local,
         allow_domain_literal,
         deliverable_address,
+        allowed_special_domains,
     )
     return emval.validate_email(email)
