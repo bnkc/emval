@@ -1,5 +1,6 @@
 from pathlib import Path
 from typing import TYPE_CHECKING
+from typing import List
 
 import polars as pl
 from polars.plugins import register_plugin_function
@@ -14,6 +15,7 @@ def validate_email(
     allow_quoted_local: bool,
     allow_domain_literal: bool,
     deliverable_address: bool,
+    allowed_special_domains: List[str],
 ) -> pl.Expr:
     return register_plugin_function(
         plugin_path=PLUGIN_PATH,
@@ -25,5 +27,6 @@ def validate_email(
             'allow_quoted_local': allow_quoted_local,
             'allow_domain_literal': allow_domain_literal,
             'deliverable_address': deliverable_address,
+            'allowed_special_domains': allowed_special_domains,
         },
     )

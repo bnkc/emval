@@ -11,6 +11,7 @@ struct ValidateEmailKwargs {
     allow_quoted_local: bool,
     allow_domain_literal: bool,
     deliverable_address: bool,
+    allowed_special_domains: Vec<String>,
 }
 
 fn validate_email_struct(_input_fields: &[Field]) -> PolarsResult<Field> {
@@ -22,11 +23,8 @@ fn validate_email_struct(_input_fields: &[Field]) -> PolarsResult<Field> {
         Field::new("domain_name".into(), DataType::String),
         Field::new("is_deliverable".into(), DataType::Boolean),
     ];
-    
-    Ok(Field::new(
-        "validated".into(),
-        DataType::Struct(fields),
-    ))
+
+    Ok(Field::new("validated".into(), DataType::Struct(fields)))
 }
 
 #[polars_expr(output_type_func=validate_email_struct)]
@@ -41,6 +39,7 @@ pub fn validate_email(inputs: &[Series], kwargs: ValidateEmailKwargs) -> PolarsR
         allow_quoted_local: kwargs.allow_quoted_local,
         allow_domain_literal: kwargs.allow_domain_literal,
         deliverable_address: kwargs.deliverable_address,
+        allowed_special_domains: kwargs.allowed_special_domains,
     };
 
     let mut original_builder = StringChunkedBuilder::new("original".into(), ca.len());
