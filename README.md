@@ -132,6 +132,89 @@ fn main() -> Result<(), ValidationError> {
 - `deliverable_address`: Checks if the email address is deliverable by verifying the domain's MX records.
 - `allowed_special_domains`: List of special-use domains to allow despite being reserved (e.g., `['test', 'invalid']`).
 
+## Polars Plugin
+
+emval includes a high-performance Polars plugin for validating email addresses in DataFrames at scale.
+
+### Installation
+
+The Polars plugin is included when you install emval:
+
+```sh
+pip install emval
+```
+
+### Usage
+
+Import the `validate_email` function from `emval.polars` and use it with Polars expressions:
+
+```python
+import polars as pl
+from emval.polars import validate_email
+
+# Create a DataFrame with email addresses
+df = pl.DataFrame({
+    "email": [
+        "user@example.com",
+        "invalid-email",
+        "another.user@domain.org",
+        ""
+    ]
+})
+
+# Validate emails and add results as a struct column
+result = df.with_columns(
+    validated=validate_email(
+        pl.col("email"),
+        allow_smtputf8=True,
+        allow_empty_local=False,
+        allow_quoted_local=False,
+        allow_domain_literal=False,
+        deliverable_address=False,
+        allowed_special_domains=[]
+    )
+)
+
+# Extract individual fields from the validation result
+result = result.with_columns(
+    original=pl.col("validated").struct.field("original"),
+    normalized=pl.col("validated").struct.field("normalized"),
+    local_part=pl.col("validated").struct.field("local_part"),
+    domain_address=pl.col("validated").struct.field("domain_address"),
+    domain_name=pl.col("validated").struct.field("domain_name"),
+    is_deliverable=pl.col("validated").struct.field("is_deliverable"),
+)
+
+print(result)
+```
+
+### Return Fields
+
+The `validate_email` function returns a struct with the following fields:
+
+- `original`: The original email address (null if invalid)
+- `normalized`: The normalized form of the email address (null if invalid)
+- `local_part`: The local part of the email address (null if invalid)
+- `domain_address`: The IP address if a domain literal was used (null otherwise)
+- `domain_name`: The domain name (null if invalid)
+- `is_deliverable`: Whether the email is deliverable based on MX records (null if invalid or not checked)
+
+Invalid emails will have all fields set to null, making it easy to filter valid emails:
+
+```python
+# Filter to only valid emails
+valid_emails = result.filter(pl.col("normalized").is_not_null())
+```
+
+### Performance Benefits
+
+The Polars plugin leverages Rust's performance and Polars' columnar architecture to validate millions of email addresses efficiently. This is ideal for:
+
+- Data cleaning and validation pipelines
+- Batch processing of user data
+- ETL workflows
+- Large-scale email list verification
+
 ## Technical Details
 
 ### Email Address Syntax
