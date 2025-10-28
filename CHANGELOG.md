@@ -7,6 +7,42 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.10](https://github.com/bnkc/emval/compare/v0.1.9...v0.1.10) - 2025-09-14
+
+### Other
+
+- use stable rust compiler
+
+## [0.1.9](https://github.com/bnkc/emval/compare/v0.1.7...v0.1.9) - 2025-06-26
+
+### Fixed
+
+- Fixed pip installation error caused by LICENSE file path conflict in wheel packaging
+
+## [0.1.7](https://github.com/bnkc/emval/compare/v0.1.6...v0.1.7) - 2025-06-26
+
+### Other
+
+- release v0.1.6
+
+## [0.1.6](https://github.com/bnkc/emval/compare/v0.1.5...v0.1.6) - 2025-06-26
+
+### Other
+
+- quick push
+- Some cleanups
+- Update README
+- Update pyo3 signature
+- Add allowed_special_domains configuration option
+- Update README.md
+- Update README.md
+
+## [0.1.5](https://github.com/bnkc/emval/compare/v0.1.4...v0.1.5) - 2024-12-05
+
+### Other
+
+- updating workflow files
+
 ### Changed
 
 - Merge pull request #4 from bnkc/dependabot/cargo/pyo3-0.22.4

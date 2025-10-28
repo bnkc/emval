@@ -1,7 +1,9 @@
-import pytest
-from emval.polars import validate_email
-from emval import EmailValidator
 import polars as pl
+import pytest
+
+from emval import EmailValidator
+from emval.polars import validate_email
+
 
 @pytest.fixture
 def validator():
@@ -11,6 +13,7 @@ def validator():
         allow_quoted_local=False,
         allow_domain_literal=False,
         deliverable_address=True,
+        allowed_special_domains=[],
     )
 
 
@@ -24,6 +27,7 @@ def test_valid_email_validation(validator):
             allow_quoted_local=False,
             allow_domain_literal=False,
             deliverable_address=True,
+            allowed_special_domains=[]
         )
     )
 
@@ -48,6 +52,7 @@ def test_invalid_email_validation(validator):
             allow_quoted_local=False,
             allow_domain_literal=False,
             deliverable_address=True,
+            allowed_special_domains=[]
         )
     )
 
@@ -71,6 +76,7 @@ def test_empty_email_validation(validator):
             allow_quoted_local=False,
             allow_domain_literal=False,
             deliverable_address=True,
+            allowed_special_domains=[]
         )
     )
 
@@ -96,6 +102,7 @@ def test_multiple_emails_validation(validator):
             allow_quoted_local=False,
             allow_domain_literal=False,
             deliverable_address=True,
+            allowed_special_domains=[]
         )
     )
 
@@ -108,5 +115,5 @@ def test_multiple_emails_validation(validator):
     assert len(result) == 4
     assert result.get_column("is_deliverable")[0] is None
     assert result.get_column("is_deliverable")[1] is None
-    assert result.get_column("is_deliverable")[2] is True  
+    assert result.get_column("is_deliverable")[2] is True
     assert result.get_column("is_deliverable")[3] is None

@@ -6,11 +6,12 @@ use std::net::IpAddr;
 use std::str::FromStr;
 use trust_dns_resolver::config::*;
 use trust_dns_resolver::Resolver;
+use crate::util::ip_addr_ext::IpAddrExt;
 
 pub fn validate_domain(
     validator: &EmailValidator,
     domain: &str,
-) -> Result<(String, Option<IpAddr>), ValidationError> {
+) -> Result<(String, Option<IpAddr>, bool), ValidationError> {
     // Guard clause if domain is being executed independently
     if domain.is_empty() {
         return Err(ValidationError::SyntaxError(
@@ -39,7 +40,7 @@ pub fn validate_domain(
                     )
                 })?;
             if let IpAddr::V6(addr) = addr {
-                return Ok((format!("[IPv6:{}]", addr), Some(IpAddr::V6(addr))));
+                return Ok((format!("[IPv6:{}]", addr), Some(IpAddr::V6(addr)), false));
             }
         }
 
@@ -56,7 +57,7 @@ pub fn validate_domain(
             IpAddr::V6(_) => format!("[IPv6:{}]", addr),
         };
 
-        return Ok((name, Some(addr)));
+        return Ok((name, Some(addr), false));
     }
 
     // Check for invalid characters in the domain part
@@ -148,17 +149,31 @@ pub fn validate_domain(
         }
     }
 
-    // Check for reserved and "special use" domains
-    for &special_domain in crate::consts::SPECIAL_USE_DOMAIN_NAMES {
-        if normalized_domain == special_domain
-            || normalized_domain.ends_with(&format!(".{}", special_domain))
-        {
-            return Err(ValidationError::SyntaxError(
-                    "Invalid Domain: The part after the '@' sign is a reserved or special-use domain that cannot be used.".to_string(),
-            ));
+    let maybe_special_domain =
+        crate::consts::SPECIAL_USE_DOMAIN_NAMES
+            .iter()
+            .find(|special_domain| {
+                normalized_domain == **special_domain
+                    || normalized_domain.ends_with(&format!(".{}", special_domain))
+            });
+
+    if let Some(special) = maybe_special_domain {
+        // Check if this special domain is in the allowed list
+        let is_allowed = validator
+            .allowed_special_domains
+            .iter()
+            .any(|allowed| allowed == special);
+
+        if !is_allowed {
+            Err(ValidationError::SyntaxError(
+                        "Invalid Domain: The part after the '@' sign is a reserved or special-use domain that cannot be used.".to_string(),
+                ))
+        } else {
+            Ok((normalized_domain.to_string(), None, true))
         }
+    } else {
+        Ok((normalized_domain.to_string(), None, false))
     }
-    Ok((normalized_domain.to_string(), None))
 }
 
 pub fn validate_deliverability(domain: &str) -> Result<(), ValidationError> {
@@ -185,12 +200,12 @@ pub fn validate_deliverability(domain: &str) -> Result<(), ValidationError> {
 
     // Fallback to A/AAAA records
     if let Ok(a_records) = resolver.ipv4_lookup(domain) {
-        if a_records.iter().any(|ip| ip.is_global()) {
+        if a_records.iter().any(|ip| IpAddrExt::is_global(&ip.0)) {
             return Ok(());
         }
     }
     if let Ok(aaaa_records) = resolver.ipv6_lookup(domain) {
-        if aaaa_records.iter().any(|ip| ip.is_global()) {
+        if aaaa_records.iter().any(|ip| IpAddrExt::is_global(&ip.0)) {
             return Ok(());
         }
     }
