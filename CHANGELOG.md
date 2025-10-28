@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.11](https://github.com/bnkc/emval/compare/v0.1.10...v0.1.11) - 2025-10-28
+
+### Fixed
+
+- resolve merge conflicts
+
+### Other
+
+- regenerate by maturin and add env: `CFLAGS_s390x_unknown_linux_gnu: -march=z10`
+- added `allowed_special_domains` for `EmailValidator` and `validate_email`
+
 ## [0.1.10](https://github.com/bnkc/emval/compare/v0.1.9...v0.1.10) - 2025-09-14
 
 ### Other
