@@ -156,8 +156,9 @@
 mod consts;
 pub mod errors;
 mod models;
-mod validators;
+mod polars_plugin;
 pub(crate) mod util;
+mod validators;
 
 pub use crate::errors::ValidationError;
 pub use crate::models::{EmailValidator, ValidatedEmail};

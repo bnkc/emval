@@ -1,6 +1,4 @@
-use crate::models::EmailValidator;
-use crate::models::ValidatedEmail;
-
+use crate::models::{EmailValidator, ValidatedEmail};
 use pyo3::prelude::*;
 
 impl EmailValidator {
@@ -14,7 +12,6 @@ impl EmailValidator {
     /// let validator = EmailValidator::default();
     /// let validated_email = validator.validate_email("example@domain.com").unwrap();
     /// assert!(validated_email.is_deliverable);
-    ///
     /// ```
     pub fn validate_email(
         &self,
@@ -73,7 +70,6 @@ impl EmailValidator {
         allow_domain_literal = false,
         deliverable_address = true,
         allowed_special_domains = vec![],
-
     ))]
     pub fn new(
         allow_smtputf8: bool,
@@ -89,7 +85,7 @@ impl EmailValidator {
             allow_quoted_local,
             allow_domain_literal,
             deliverable_address,
-            allowed_special_domains: allowed_special_domains,
+            allowed_special_domains,
         }
     }
 
