@@ -40,13 +40,6 @@ pub fn validate_local_part(
         }
         crate::validators::validate_chars(&unquoted_local, false)?;
 
-        // Check for valid UTF-8 encoding
-        if String::from_utf8(unquoted_local.as_bytes().to_vec()).is_err() {
-            return Err(ValidationError::SyntaxError(
-                "Invalid Local Part: Contains non-UTF-8 characters.".to_string(),
-            ));
-        }
-
         return Ok(unquoted_local.to_string());
     }
 
@@ -75,13 +68,6 @@ pub fn validate_local_part(
         }
 
         crate::validators::validate_chars(&unquoted_local, true)?;
-
-        // Check for valid UTF-8 encoding
-        if String::from_utf8(local.as_bytes().to_vec()).is_err() {
-            return Err(ValidationError::SyntaxError(
-                "Invalid Local Part: Contains non-UTF-8 characters.".to_string(),
-            ));
-        }
 
         return Ok(local.to_string());
     }
