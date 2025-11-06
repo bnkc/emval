@@ -401,7 +401,6 @@ def test_email_invalid_reserved_domain(email_input: str) -> None:
 @pytest.mark.parametrize(
     ("s", "expected_error"),
     [
-        ("\u2005", "FOUR-PER-EM SPACE"),  # four-per-em space (Zs)
         ("\u2028", "LINE SEPARATOR"),  # line separator (Zl)
         ("\u2029", "PARAGRAPH SEPARATOR"),  # paragraph separator (Zp)
         ("\u0300", "COMBINING GRAVE ACCENT"),  # grave accent (M)

@@ -1,6 +1,9 @@
 use crate::errors::ValidationError;
 use crate::models::EmailValidator;
+use icu_normalizer::ComposingNormalizerBorrowed;
 use std::collections::HashSet;
+
+const NFKC: ComposingNormalizerBorrowed = ComposingNormalizerBorrowed::new_nfkc();
 
 pub fn validate_local_part(
     validator: &EmailValidator,
@@ -19,6 +22,10 @@ pub fn validate_local_part(
     // Remove surrounding quotes, unescaping any escaped characters within quotes
     let unquoted_local = unquote_local_part(local, validator.allow_quoted_local)?;
 
+    // Normalize to NFKC as required by
+    // https://www.unicode.org/reports/tr39/#Email_Security_Profiles
+    let unquoted_local = NFKC.normalize(&unquoted_local);
+
     // Local part length validation
     if unquoted_local.len() > crate::consts::MAX_LOCAL_PART_LENGTH {
         return Err(ValidationError::ValueError(
@@ -28,7 +35,7 @@ pub fn validate_local_part(
 
     // Check for valid dot-atom text
     if crate::consts::DOT_ATOM_TEXT.is_match(unquoted_local.as_bytes()) {
-        return Ok(unquoted_local);
+        return Ok(unquoted_local.to_string());
     }
 
     // Check for valid internationalized dot-atom text
