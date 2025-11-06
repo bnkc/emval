@@ -10,6 +10,9 @@ pub struct ValidatedEmail {
     /// The normalized email address should be used instead of the original. It converts IDNA ASCII domain names to Unicode and normalizes both the local part and domain. The normalized address combines the local part and domain name with an '@' sign.
     #[pyo3(get)]
     pub normalized: String,
+    /// The ASCII (Punycode-encoded) form of the email address, if one exists.
+    #[pyo3(get)]
+    pub ascii_email: Option<String>,
     /// The local part of the email address (the part before the '@' sign) after it has been Unicode normalized.
     #[pyo3(get)]
     pub local_part: String,
@@ -19,6 +22,9 @@ pub struct ValidatedEmail {
     /// The domain part of the email address (the part after the '@' sign) after Unicode normalization.
     #[pyo3(get)]
     pub domain_name: String,
+    /// The ASCII (Punycode-encoded) form of the domain part of the email address.
+    #[pyo3(get)]
+    pub ascii_domain: String,
     /// Whether the email address is deliverable.
     #[pyo3(get)]
     pub is_deliverable: bool,

@@ -58,8 +58,10 @@ class EmailValidator:
         return ValidatedEmail(
             original=validated_email.original,
             normalized=validated_email.normalized,
+            ascii_email=validated_email.ascii_email,
             local_part=validated_email.local_part,
             domain_name=validated_email.domain_name,
+            ascii_domain=validated_email.ascii_domain,
             domain_address=validated_email.domain_address,
             is_deliverable=validated_email.is_deliverable,
         )
