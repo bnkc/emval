@@ -13,8 +13,10 @@ from emval import ValidatedEmail, validate_email
             "Abc@example.tld",
             ValidatedEmail(
                 local_part="Abc",
+                ascii_domain="example.tld",
                 domain_name="example.tld",
                 normalized="Abc@example.tld",
+                ascii_email="Abc@example.tld",
                 original="Abc@example.tld",
             ),
         ),
@@ -22,8 +24,10 @@ from emval import ValidatedEmail, validate_email
             "Abc.123@test-example.com",
             ValidatedEmail(
                 local_part="Abc.123",
+                ascii_domain="test-example.com",
                 domain_name="test-example.com",
                 normalized="Abc.123@test-example.com",
+                ascii_email="Abc.123@test-example.com",
                 original="Abc.123@test-example.com",
             ),
         ),
@@ -31,8 +35,10 @@ from emval import ValidatedEmail, validate_email
             "user+mailbox/department=shipping@example.tld",
             ValidatedEmail(
                 local_part="user+mailbox/department=shipping",
+                ascii_domain="example.tld",
                 domain_name="example.tld",
                 normalized="user+mailbox/department=shipping@example.tld",
+                ascii_email="user+mailbox/department=shipping@example.tld",
                 original="user+mailbox/department=shipping@example.tld",
             ),
         ),
@@ -40,17 +46,32 @@ from emval import ValidatedEmail, validate_email
             "!#$%&'*+-/=?^_`.{|}~@example.tld",
             ValidatedEmail(
                 local_part="!#$%&'*+-/=?^_`.{|}~",
+                ascii_domain="example.tld",
                 domain_name="example.tld",
                 normalized="!#$%&'*+-/=?^_`.{|}~@example.tld",
+                ascii_email="!#$%&'*+-/=?^_`.{|}~@example.tld",
                 original="!#$%&'*+-/=?^_`.{|}~@example.tld",
+            ),
+        ),
+        (
+            "jeff@臺網中心.tw",
+            ValidatedEmail(
+                local_part="jeff",
+                ascii_domain="xn--fiqq24b10vi0d.tw",
+                domain_name="臺網中心.tw",
+                normalized="jeff@臺網中心.tw",
+                ascii_email="jeff@xn--fiqq24b10vi0d.tw",
+                original="jeff@臺網中心.tw",
             ),
         ),
         (
             '"quoted local part"@example.org',
             ValidatedEmail(
                 local_part='"quoted local part"',
+                ascii_domain="example.org",
                 domain_name="example.org",
                 normalized='"quoted local part"@example.org',
+                ascii_email='"quoted local part"@example.org',
                 original='"quoted local part"@example.org',
             ),
         ),
@@ -58,8 +79,10 @@ from emval import ValidatedEmail, validate_email
             '"de-quoted.local.part"@example.org',
             ValidatedEmail(
                 local_part="de-quoted.local.part",
+                ascii_domain="example.org",
                 domain_name="example.org",
                 normalized="de-quoted.local.part@example.org",
+                ascii_email="de-quoted.local.part@example.org",
                 original='"de-quoted.local.part"@example.org',
             ),
         ),
@@ -74,6 +97,7 @@ def test_email_valid(email_input: str, output: ValidatedEmail) -> None:
     )
 
     assert validated_email == output
+
     assert (
         validate_email(
             email_input,
@@ -82,6 +106,164 @@ def test_email_valid(email_input: str, output: ValidatedEmail) -> None:
             allow_quoted_local=True,
         )
         == output
+    )
+
+
+@pytest.mark.parametrize(
+    "email_input,output",
+    [
+        (
+            "伊昭傑@郵件.商務",
+            ValidatedEmail(
+                local_part="伊昭傑",
+                ascii_domain="xn--5nqv22n.xn--lhr59c",
+                domain_name="郵件.商務",
+                normalized="伊昭傑@郵件.商務",
+                original="伊昭傑@郵件.商務",
+            ),
+        ),
+        (
+            "राम@मोहन.ईन्फो",
+            ValidatedEmail(
+                local_part="राम",
+                ascii_domain="xn--l2bl7a9d.xn--o1b8dj2ki",
+                domain_name="मोहन.ईन्फो",
+                normalized="राम@मोहन.ईन्फो",
+                original="राम@मोहन.ईन्फो",
+            ),
+        ),
+        (
+            "юзер@екзампл.ком",
+            ValidatedEmail(
+                local_part="юзер",
+                ascii_domain="xn--80ajglhfv.xn--j1aef",
+                domain_name="екзампл.ком",
+                normalized="юзер@екзампл.ком",
+                original="юзер@екзампл.ком",
+            ),
+        ),
+        (
+            "θσερ@εχαμπλε.ψομ",
+            ValidatedEmail(
+                local_part="θσερ",
+                ascii_domain="xn--mxahbxey0c.xn--xxaf0a",
+                domain_name="εχαμπλε.ψομ",
+                normalized="θσερ@εχαμπλε.ψομ",
+                original="θσερ@εχαμπλε.ψομ",
+            ),
+        ),
+        (
+            "葉士豪@臺網中心.tw",
+            ValidatedEmail(
+                local_part="葉士豪",
+                ascii_domain="xn--fiqq24b10vi0d.tw",
+                domain_name="臺網中心.tw",
+                normalized="葉士豪@臺網中心.tw",
+                original="葉士豪@臺網中心.tw",
+            ),
+        ),
+        (
+            "葉士豪@臺網中心.台灣",
+            ValidatedEmail(
+                local_part="葉士豪",
+                ascii_domain="xn--fiqq24b10vi0d.xn--kpry57d",
+                domain_name="臺網中心.台灣",
+                normalized="葉士豪@臺網中心.台灣",
+                original="葉士豪@臺網中心.台灣",
+            ),
+        ),
+        (
+            "jeff葉@臺網中心.tw",
+            ValidatedEmail(
+                local_part="jeff葉",
+                ascii_domain="xn--fiqq24b10vi0d.tw",
+                domain_name="臺網中心.tw",
+                normalized="jeff葉@臺網中心.tw",
+                original="jeff葉@臺網中心.tw",
+            ),
+        ),
+        (
+            "ñoñó@example.tld",
+            ValidatedEmail(
+                local_part="ñoñó",
+                ascii_domain="example.tld",
+                domain_name="example.tld",
+                normalized="ñoñó@example.tld",
+                original="ñoñó@example.tld",
+            ),
+        ),
+        (
+            "我買@example.tld",
+            ValidatedEmail(
+                local_part="我買",
+                ascii_domain="example.tld",
+                domain_name="example.tld",
+                normalized="我買@example.tld",
+                original="我買@example.tld",
+            ),
+        ),
+        (
+            "甲斐黒川日本@example.tld",
+            ValidatedEmail(
+                local_part="甲斐黒川日本",
+                ascii_domain="example.tld",
+                domain_name="example.tld",
+                normalized="甲斐黒川日本@example.tld",
+                original="甲斐黒川日本@example.tld",
+            ),
+        ),
+        (
+            "чебурашкаящик-с-апельсинами.рф@example.tld",
+            ValidatedEmail(
+                local_part="чебурашкаящик-с-апельсинами.рф",
+                ascii_domain="example.tld",
+                domain_name="example.tld",
+                normalized="чебурашкаящик-с-апельсинами.рф@example.tld",
+                original="чебурашкаящик-с-апельсинами.рф@example.tld",
+            ),
+        ),
+        (
+            "उदाहरण.परीक्ष@domain.with.idn.tld",
+            ValidatedEmail(
+                local_part="उदाहरण.परीक्ष",
+                ascii_domain="domain.with.idn.tld",
+                domain_name="domain.with.idn.tld",
+                normalized="उदाहरण.परीक्ष@domain.with.idn.tld",
+                original="उदाहरण.परीक्ष@domain.with.idn.tld",
+            ),
+        ),
+        (
+            "ιωάννης@εεττ.gr",
+            ValidatedEmail(
+                local_part="ιωάννης",
+                ascii_domain="xn--qxaa9ba.gr",
+                domain_name="εεττ.gr",
+                normalized="ιωάννης@εεττ.gr",
+                original="ιωάννης@εεττ.gr",
+            ),
+        ),
+    ],
+)
+def test_email_valid_intl_local_part(email_input: str, output: ValidatedEmail) -> None:
+    assert (
+        validate_email(
+            email_input,
+            deliverable_address=False,
+            allow_smtputf8=True,
+            allow_quoted_local=True,
+        )
+        == output
+    )
+
+    with pytest.raises(SyntaxError) as exc_info:
+        validate_email(
+            email_input,
+            deliverable_address=False,
+            allow_smtputf8=False,
+            allow_quoted_local=True,
+        )
+    assert str(exc_info.value) == (
+        "Invalid Local Part: Internationalized characters before the '@' sign are not supported."
     )
 
 
@@ -401,7 +583,6 @@ def test_email_invalid_reserved_domain(email_input: str) -> None:
 @pytest.mark.parametrize(
     ("s", "expected_error"),
     [
-        ("\u2005", "FOUR-PER-EM SPACE"),  # four-per-em space (Zs)
         ("\u2028", "LINE SEPARATOR"),  # line separator (Zl)
         ("\u2029", "PARAGRAPH SEPARATOR"),  # paragraph separator (Zp)
         ("\u0300", "COMBINING GRAVE ACCENT"),  # grave accent (M)

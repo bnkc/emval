@@ -19,6 +19,7 @@ crate-type = ["cdylib", "rlib"]
 pyo3 = { version = "=0.25.1", features = ["extension-module", "abi3-py38"] }
 
 # emval dependencies
+icu_normalizer = "2.0.0"
 idna = "1.0.2"
 lazy_static = "1.5.0"
 regex = "1.10.5"

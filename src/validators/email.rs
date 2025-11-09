@@ -30,21 +30,26 @@ impl EmailValidator {
             valid_local_part = valid_local_part.to_lowercase();
         }
 
-        let (domain_name, domain_address, is_whitelisted_special_domain) =
+        let (domain_name, ascii_domain, domain_address, is_whitelisted_special_domain) =
             crate::validators::validate_domain(self, &unvalidated_domain)?;
 
         if self.deliverable_address && !is_whitelisted_special_domain {
-            crate::validators::validate_deliverability(&domain_name)?;
+            crate::validators::validate_deliverability(&ascii_domain)?;
         }
 
+        let ascii_email = valid_local_part
+            .is_ascii()
+            .then(|| format!("{}@{}", valid_local_part, ascii_domain));
         let normalized = format!("{}@{}", valid_local_part, domain_name);
 
         Ok(ValidatedEmail {
             original: email.to_string(),
             local_part: valid_local_part,
             domain_name,
+            ascii_domain,
             domain_address,
             normalized,
+            ascii_email,
             is_deliverable: true,
         })
     }

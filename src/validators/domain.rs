@@ -11,7 +11,7 @@ use crate::util::ip_addr_ext::IpAddrExt;
 pub fn validate_domain(
     validator: &EmailValidator,
     domain: &str,
-) -> Result<(String, Option<IpAddr>, bool), ValidationError> {
+) -> Result<(String, String, Option<IpAddr>, bool), ValidationError> {
     // Guard clause if domain is being executed independently
     if domain.is_empty() {
         return Err(ValidationError::SyntaxError(
@@ -40,7 +40,8 @@ pub fn validate_domain(
                     )
                 })?;
             if let IpAddr::V6(addr) = addr {
-                return Ok((format!("[IPv6:{}]", addr), Some(IpAddr::V6(addr)), false));
+                let name = format!("[IPv6:{}]", addr);
+                return Ok((name.clone(), name, Some(IpAddr::V6(addr)), false));
             }
         }
 
@@ -57,7 +58,7 @@ pub fn validate_domain(
             IpAddr::V6(_) => format!("[IPv6:{}]", addr),
         };
 
-        return Ok((name, Some(addr), false));
+        return Ok((name.clone(), name, Some(addr), false));
     }
 
     // Check for invalid characters in the domain part
@@ -71,7 +72,7 @@ pub fn validate_domain(
     crate::validators::validate_chars(domain, false)?;
 
     // Normalize the domain using UTS-46
-    let normalized_domain = Uts46::new()
+    let ascii_domain = Uts46::new()
             .to_ascii(
                 domain.as_bytes(),
                 AsciiDenyList::URL,
@@ -86,7 +87,7 @@ pub fn validate_domain(
             })?;
 
     // Check for invalid chars after normalization
-    if !crate::consts::ATEXT_HOSTNAME_INTL.is_match(normalized_domain.as_bytes()) {
+    if !crate::consts::ATEXT_HOSTNAME_INTL.is_match(ascii_domain.as_bytes()) {
         return Err(ValidationError::SyntaxError(
             "Invalid Domain: Contains invalid characters after Unicode normalization.".to_string(),
         ));
@@ -96,21 +97,21 @@ pub fn validate_domain(
     // Each label must have at least one character and cannot start or end with dashes or periods.
     // Consecutive periods and adjacent period-hyphen combinations are also invalid.
     crate::validators::validate_email_label(
-        &normalized_domain,
+        &ascii_domain,
         "Invalid Domain: A {} cannot immediately follow the '@' symbol.",
         "Invalid Domain: A {} cannot appear at the end of the domain.",
         true,
     )?;
 
     // Check the total length of the domain
-    if normalized_domain.len() > crate::consts::MAX_DOMAIN_LENGTH {
+    if ascii_domain.len() > crate::consts::MAX_DOMAIN_LENGTH {
         return Err(ValidationError::ValueError(
             "Invalid Domain: Exceeds the maximum length (253 chars).".to_string(),
         ));
     }
 
     // Check for invalid domain labels
-    for label in normalized_domain.split('.') {
+    for label in ascii_domain.split('.') {
         if label.len() > crate::consts::MAX_DNS_LABEL_LENGTH {
             return Err(ValidationError::ValueError(
                 "Invalid Label: Exceeds the maximum length (63 chars).".to_string(),
@@ -135,26 +136,32 @@ pub fn validate_domain(
 
     if validator.deliverable_address {
         // Deliverable addresses must contain atleast one period.
-        if !normalized_domain.contains(".") {
+        if !ascii_domain.contains(".") {
             return Err(ValidationError::SyntaxError(
                 "Invalid Domain: Must contain a period ('.') to be considered valid.".to_string(),
             ));
         }
 
         // TLDs must end with a letter.
-        if !crate::consts::DOMAIN_NAME_REGEX.is_match(normalized_domain.as_bytes()) {
+        if !crate::consts::DOMAIN_NAME_REGEX.is_match(ascii_domain.as_bytes()) {
             return Err(ValidationError::SyntaxError(
                     "Invalid domain: The part after the '@' sign does not belong to a valid top-level domain (TLD).".to_string(),
                 ));
         }
     }
 
+    let (unicode_domain, result) =
+        Uts46::new().to_unicode(ascii_domain.as_bytes(), AsciiDenyList::URL, Hyphens::Allow);
+    result.map_err(|_| {
+        ValidationError::SyntaxError("Invalid Domain: Contains invalid characters after '@' sign post Unicode normalization.".to_string())
+    })?;
+
     let maybe_special_domain =
         crate::consts::SPECIAL_USE_DOMAIN_NAMES
             .iter()
             .find(|special_domain| {
-                normalized_domain == **special_domain
-                    || normalized_domain.ends_with(&format!(".{}", special_domain))
+                ascii_domain == **special_domain
+                    || ascii_domain.ends_with(&format!(".{}", special_domain))
             });
 
     if let Some(special) = maybe_special_domain {
@@ -169,10 +176,20 @@ pub fn validate_domain(
                         "Invalid Domain: The part after the '@' sign is a reserved or special-use domain that cannot be used.".to_string(),
                 ))
         } else {
-            Ok((normalized_domain.to_string(), None, true))
+            Ok((
+                unicode_domain.to_string(),
+                ascii_domain.to_string(),
+                None,
+                true,
+            ))
         }
     } else {
-        Ok((normalized_domain.to_string(), None, false))
+        Ok((
+            unicode_domain.to_string(),
+            ascii_domain.to_string(),
+            None,
+            false,
+        ))
     }
 }
 
@@ -248,6 +265,31 @@ mod tests {
         let result = validate_domain(&emval, domain);
 
         assert!(result.is_ok());
+    }
+
+    #[rstest]
+    fn test_validate_domain_idna() {
+        let emval = EmailValidator::default();
+        let result = validate_domain(&emval, "xn--fsqu00a.xn--4rr70v");
+        assert_eq!(
+            result.unwrap(),
+            (
+                "例子.广告".to_string(),
+                "xn--fsqu00a.xn--4rr70v".to_string(),
+                None,
+                false
+            )
+        );
+        let result = validate_domain(&emval, "例子.广告");
+        assert_eq!(
+            result.unwrap(),
+            (
+                "例子.广告".to_string(),
+                "xn--fsqu00a.xn--4rr70v".to_string(),
+                None,
+                false
+            )
+        );
     }
 
     #[rstest]
