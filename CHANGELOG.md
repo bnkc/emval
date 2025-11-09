@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.12](https://github.com/bnkc/emval/compare/v0.1.11...v0.1.12) - 2025-11-09
+
+### Other
+
+- Normalize IDN to Unicode rather than ASCII
+- Normalize local-part to NFKC
+- Remove redundant check for non-UTF-8 characters
+- quick push
+
 ## [0.1.11](https://github.com/bnkc/emval/compare/v0.1.10...v0.1.11) - 2025-10-28
 
 ### Fixed
