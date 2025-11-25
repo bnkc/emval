@@ -162,7 +162,9 @@ pub(crate) mod util;
 mod validators;
 
 #[cfg(feature = "wasm")]
-mod wasm;
+use wasm_bindgen::prelude::*;
+
+
 
 pub use crate::errors::ValidationError;
 pub use crate::models::{EmailValidator, ValidatedEmail};
@@ -171,6 +173,15 @@ pub use crate::models::{EmailValidator, ValidatedEmail};
 pub fn validate_email<T: AsRef<str>>(email: T) -> Result<ValidatedEmail, ValidationError> {
     let validator = EmailValidator::default();
     validator.validate_email(email.as_ref())
+}
+
+#[cfg(feature = "wasm")]
+#[wasm_bindgen]
+pub fn validate_email_wasm(email: String) -> Result<String, String> {
+    match validate_email(&email) {
+        Ok(validated) => Ok(validated.normalized),
+        Err(e) => Err(e.to_string()),
+    }
 }
 
 #[cfg(feature = "python")]

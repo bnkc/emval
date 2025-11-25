@@ -8,6 +8,7 @@ use std::str::FromStr;
 use trust_dns_resolver::config::*;
 #[cfg(feature = "dns")]
 use trust_dns_resolver::Resolver;
+#[cfg(feature = "dns")]
 use crate::util::ip_addr_ext::IpAddrExt;
 
 pub fn validate_domain(
