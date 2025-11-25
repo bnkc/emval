@@ -469,6 +469,7 @@ dependencies = [
  "trust-dns-resolver",
  "unicode-properties",
  "unicode_names2",
+ "wasm-bindgen",
 ]
 
 [[package]]
