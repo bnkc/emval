@@ -4,8 +4,11 @@ use idna::uts46::Uts46;
 use idna::uts46::{AsciiDenyList, DnsLength, Hyphens};
 use std::net::IpAddr;
 use std::str::FromStr;
+#[cfg(feature = "dns")]
 use trust_dns_resolver::config::*;
+#[cfg(feature = "dns")]
 use trust_dns_resolver::Resolver;
+#[cfg(feature = "dns")]
 use crate::util::ip_addr_ext::IpAddrExt;
 
 pub fn validate_domain(
@@ -193,6 +196,7 @@ pub fn validate_domain(
     }
 }
 
+#[cfg(feature = "dns")]
 pub fn validate_deliverability(domain: &str) -> Result<(), ValidationError> {
     let resolver = Resolver::new(ResolverConfig::default(), ResolverOpts::default())
         .map_err(|e| ValidationError::SyntaxError(e.to_string()))?;
@@ -242,6 +246,12 @@ pub fn validate_deliverability(domain: &str) -> Result<(), ValidationError> {
     Err(ValidationError::SyntaxError(
         "Invalid Domain: No MX, A, or AAAA records found for domain.".to_string(),
     ))
+}
+
+#[cfg(not(feature = "dns"))]
+pub fn validate_deliverability(_domain: &str) -> Result<(), ValidationError> {
+    // DNS resolution is not available when dns feature is disabled
+    Ok(())
 }
 
 #[cfg(test)]

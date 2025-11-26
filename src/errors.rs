@@ -1,4 +1,6 @@
+#[cfg(feature = "python")]
 use pyo3::exceptions::{PySyntaxError, PyValueError};
+#[cfg(feature = "python")]
 use pyo3::prelude::*;
 
 /// An error enum for email validation.
@@ -10,6 +12,7 @@ pub enum ValidationError {
     ValueError(String),
 }
 
+#[cfg(feature = "python")]
 impl From<ValidationError> for PyErr {
     fn from(err: ValidationError) -> Self {
         match err {

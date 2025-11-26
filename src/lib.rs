@@ -156,9 +156,15 @@
 mod consts;
 pub mod errors;
 mod models;
+#[cfg(feature = "polars")]
 mod polars_plugin;
 pub(crate) mod util;
 mod validators;
+
+#[cfg(feature = "wasm")]
+use wasm_bindgen::prelude::*;
+
+
 
 pub use crate::errors::ValidationError;
 pub use crate::models::{EmailValidator, ValidatedEmail};
@@ -169,8 +175,19 @@ pub fn validate_email<T: AsRef<str>>(email: T) -> Result<ValidatedEmail, Validat
     validator.validate_email(email.as_ref())
 }
 
+#[cfg(feature = "wasm")]
+#[wasm_bindgen]
+pub fn validate_email_wasm(email: String) -> Result<String, String> {
+    match validate_email(&email) {
+        Ok(validated) => Ok(validated.normalized),
+        Err(e) => Err(e.to_string()),
+    }
+}
+
+#[cfg(feature = "python")]
 use pyo3::prelude::*;
 
+#[cfg(feature = "python")]
 #[pymodule]
 fn _emval(_py: Python, m: &Bound<PyModule>) -> PyResult<()> {
     m.add_class::<models::EmailValidator>()?;
