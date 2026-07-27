@@ -1,6 +1,7 @@
 use crate::errors::ValidationError;
 use crate::models::EmailValidator;
 use crate::util::ip_addr_ext::IpAddrExt;
+use hickory_resolver::proto::rr::RData;
 use hickory_resolver::Resolver;
 use idna::uts46::Uts46;
 use idna::uts46::{AsciiDenyList, DnsLength, Hyphens};
@@ -193,46 +194,63 @@ pub fn validate_domain(
 }
 
 pub async fn validate_deliverability(domain: &str) -> Result<(), ValidationError> {
-    let resolver = Resolver::builder_tokio().unwrap().build();
+    let resolver = Resolver::builder_tokio()
+        .and_then(|builder| builder.build())
+        .map_err(|error| {
+            ValidationError::ValueError(format!(
+                "Invalid Domain: Failed to initialize DNS resolver: {error}"
+            ))
+        })?;
 
     // Check MX records
     if let Ok(mx_records) = resolver.mx_lookup(domain).await {
-        for mx in mx_records.iter() {
-            let exchange = mx.exchange().to_string();
-            if exchange == "." {
+        for record in mx_records.answers() {
+            if let RData::MX(mx) = &record.data {
+                if mx.exchange.to_string() != "." {
+                    continue;
+                }
                 return Err(ValidationError::SyntaxError(
                     "Invalid Domain: The domain does not accept email due to a null MX record, indicating it is not configured to receive emails.".to_string(),
                 ));
             }
         }
-        if mx_records
-            .iter()
-            .any(|mx| !mx.exchange().to_string().is_empty())
-        {
+        if mx_records.answers().iter().any(
+            |record| matches!(&record.data, RData::MX(mx) if !mx.exchange.to_string().is_empty()),
+        ) {
             return Ok(());
         }
     }
 
     // Fallback to A/AAAA records
     if let Ok(a_records) = resolver.ipv4_lookup(domain).await {
-        if a_records.iter().any(|ip| IpAddrExt::is_global(&ip.0)) {
+        if a_records
+            .answers()
+            .iter()
+            .any(|record| matches!(&record.data, RData::A(ip) if IpAddrExt::is_global(&ip.0)))
+        {
             return Ok(());
         }
     }
     if let Ok(aaaa_records) = resolver.ipv6_lookup(domain).await {
-        if aaaa_records.iter().any(|ip| IpAddrExt::is_global(&ip.0)) {
+        if aaaa_records
+            .answers()
+            .iter()
+            .any(|record| matches!(&record.data, RData::AAAA(ip) if IpAddrExt::is_global(&ip.0)))
+        {
             return Ok(());
         }
     }
 
     // Check SPF records (TXT)
     if let Ok(txt_records) = resolver.txt_lookup(domain).await {
-        for record in txt_records.iter() {
-            let txt = record.to_string();
-            if txt.starts_with("v=spf1 ") && txt.contains("-all") {
-                return Err(ValidationError::SyntaxError(
-                    "Invalid Domain: The domain does not send email due to an SPF record that rejects all emails.".to_string(),
-                ));
+        for record in txt_records.answers() {
+            if let RData::TXT(txt) = &record.data {
+                let txt = txt.to_string();
+                if txt.starts_with("v=spf1 ") && txt.contains("-all") {
+                    return Err(ValidationError::SyntaxError(
+                        "Invalid Domain: The domain does not send email due to an SPF record that rejects all emails.".to_string(),
+                    ));
+                }
             }
         }
     }
