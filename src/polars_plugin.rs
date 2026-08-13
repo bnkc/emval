@@ -22,6 +22,7 @@ fn validate_email_struct(_input_fields: &[Field]) -> PolarsResult<Field> {
         Field::new("domain_address".into(), DataType::String),
         Field::new("domain_name".into(), DataType::String),
         Field::new("is_deliverable".into(), DataType::Boolean),
+        Field::new("error".into(), DataType::String),
     ];
 
     Ok(Field::new("validated".into(), DataType::Struct(fields)))
@@ -48,6 +49,7 @@ pub fn validate_email(inputs: &[Series], kwargs: ValidateEmailKwargs) -> PolarsR
     let mut domain_address_builder = StringChunkedBuilder::new("domain_address".into(), ca.len());
     let mut domain_name_builder = StringChunkedBuilder::new("domain_name".into(), ca.len());
     let mut is_deliverable_builder = BooleanChunkedBuilder::new("is_deliverable".into(), ca.len());
+    let mut error_builder = StringChunkedBuilder::new("error".into(), ca.len());
 
     for email in ca.iter() {
         match email {
@@ -60,14 +62,16 @@ pub fn validate_email(inputs: &[Series], kwargs: ValidateEmailKwargs) -> PolarsR
                         .append_option(ve.domain_address.map(|ip| ip.to_string()));
                     domain_name_builder.append_value(ve.domain_name);
                     is_deliverable_builder.append_value(ve.is_deliverable);
+                    error_builder.append_null();
                 }
-                Err(_) => {
+                Err(error) => {
                     original_builder.append_null();
                     normalized_builder.append_null();
                     local_part_builder.append_null();
                     domain_address_builder.append_null();
                     domain_name_builder.append_null();
                     is_deliverable_builder.append_null();
+                    error_builder.append_value(error.to_string());
                 }
             },
             None => {
@@ -77,6 +81,7 @@ pub fn validate_email(inputs: &[Series], kwargs: ValidateEmailKwargs) -> PolarsR
                 domain_address_builder.append_null();
                 domain_name_builder.append_null();
                 is_deliverable_builder.append_null();
+                error_builder.append_null();
             }
         }
     }
@@ -87,6 +92,7 @@ pub fn validate_email(inputs: &[Series], kwargs: ValidateEmailKwargs) -> PolarsR
     let domain_address = domain_address_builder.finish();
     let domain_name = domain_name_builder.finish();
     let is_deliverable = is_deliverable_builder.finish();
+    let error = error_builder.finish();
 
     let fields = vec![
         original.into_series(),
@@ -95,6 +101,7 @@ pub fn validate_email(inputs: &[Series], kwargs: ValidateEmailKwargs) -> PolarsR
         domain_address.into_series(),
         domain_name.into_series(),
         is_deliverable.into_series(),
+        error.into_series(),
     ];
     StructChunked::from_series("validated".into(), ca.len(), fields.iter())
         .map(|ca| ca.into_series())
