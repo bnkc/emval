@@ -466,6 +466,7 @@ dependencies = [
  "regex",
  "rstest",
  "serde",
+ "tokio",
  "trust-dns-resolver",
  "unicode-properties",
  "unicode_names2",

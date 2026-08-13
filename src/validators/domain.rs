@@ -1,12 +1,12 @@
 use crate::errors::ValidationError;
 use crate::models::EmailValidator;
+use crate::util::ip_addr_ext::IpAddrExt;
 use idna::uts46::Uts46;
 use idna::uts46::{AsciiDenyList, DnsLength, Hyphens};
 use std::net::IpAddr;
 use std::str::FromStr;
 use trust_dns_resolver::config::*;
 use trust_dns_resolver::Resolver;
-use crate::util::ip_addr_ext::IpAddrExt;
 
 pub fn validate_domain(
     validator: &EmailValidator,
@@ -194,6 +194,30 @@ pub fn validate_domain(
 }
 
 pub fn validate_deliverability(domain: &str) -> Result<(), ValidationError> {
+    // The synchronous Trust-DNS resolver calls `Runtime::block_on` internally,
+    // which panics when it runs on a thread that is already driving Tokio.
+    if tokio::runtime::Handle::try_current().is_ok() {
+        let domain = domain.to_string();
+        let resolver_thread = std::thread::Builder::new()
+            .name("emval-dns-resolver".to_string())
+            .spawn(move || validate_deliverability_blocking(&domain))
+            .map_err(|error| {
+                ValidationError::SyntaxError(format!(
+                    "Invalid Domain: Could not start the DNS resolver: {error}"
+                ))
+            })?;
+
+        return resolver_thread.join().unwrap_or_else(|_| {
+            Err(ValidationError::SyntaxError(
+                "Invalid Domain: The DNS resolver stopped unexpectedly.".to_string(),
+            ))
+        });
+    }
+
+    validate_deliverability_blocking(domain)
+}
+
+fn validate_deliverability_blocking(domain: &str) -> Result<(), ValidationError> {
     let resolver = Resolver::new(ResolverConfig::default(), ResolverOpts::default())
         .map_err(|e| ValidationError::SyntaxError(e.to_string()))?;
 
@@ -344,6 +368,22 @@ mod tests {
     #[case("example..com")]
     fn test_validate_deliverability_invalid(#[case] domain: &str) {
         assert!(validate_deliverability(domain).is_err());
+    }
+
+    #[test]
+    fn test_validate_deliverability_inside_tokio_runtime() {
+        let runtime = tokio::runtime::Builder::new_current_thread()
+            .build()
+            .expect("Tokio runtime should be created");
+
+        let error = runtime
+            .block_on(async { validate_deliverability("invalid_domain.com") })
+            .expect_err("invalid domain should fail validation");
+
+        assert_eq!(
+            error.to_string(),
+            "Invalid Domain: No MX, A, or AAAA records found for domain."
+        );
     }
 
     #[rstest]
