@@ -176,6 +176,33 @@ mod tests {
         }
     }
 
+    #[test]
+    fn test_validate_email_with_deliverability_inside_tokio_runtime() {
+        let runtime = tokio::runtime::Builder::new_multi_thread()
+            .worker_threads(1)
+            .build()
+            .expect("Tokio runtime should be created");
+        let emval = EmailValidator {
+            allow_domain_literal: true,
+            ..EmailValidator::default()
+        };
+
+        let result = runtime.block_on(async {
+            tokio::spawn(async move { emval.validate_email("me@[127.0.0.1]") })
+                .await
+                .expect("email validation should not panic")
+        });
+        let error = match result {
+            Ok(_) => panic!("domain literal should fail DNS deliverability validation"),
+            Err(error) => error,
+        };
+
+        assert_eq!(
+            error.to_string(),
+            "Invalid Domain: No MX, A, or AAAA records found for domain."
+        );
+    }
+
     #[rstest]
     #[case("POSTMASTER@example.com", Some("postmaster@example.com"))]
     #[case("NOT-POSTMASTER@example.com", Some("NOT-POSTMASTER@example.com"))]
