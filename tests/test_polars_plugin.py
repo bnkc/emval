@@ -117,3 +117,38 @@ def test_multiple_emails_validation(validator):
     assert result.get_column("is_deliverable")[1] is None
     assert result.get_column("is_deliverable")[2] is True
     assert result.get_column("is_deliverable")[3] is None
+
+
+def test_validation_errors_are_captured_in_result_struct():
+    too_long_email = f"{'a' * 250}@example.com"
+    df = pl.DataFrame(
+        {"email": ["valid@example.com", "invalid-email", too_long_email, None]}
+    )
+
+    result = df.with_columns(
+        validated=validate_email(
+            pl.col("email"),
+            allow_smtputf8=True,
+            allow_empty_local=False,
+            allow_quoted_local=False,
+            allow_domain_literal=False,
+            deliverable_address=False,
+            allowed_special_domains=[],
+        )
+    ).with_columns(
+        normalized=pl.col("validated").struct.field("normalized"),
+        email_status=pl.col("validated").struct.field("error"),
+    )
+
+    assert result.get_column("normalized").to_list() == [
+        "valid@example.com",
+        None,
+        None,
+        None,
+    ]
+    assert result.get_column("email_status").to_list() == [
+        None,
+        "Invalid Email Address: Missing an '@' sign.",
+        "Invalid Email Address: The email exceeds the maximum length (254 chars).",
+        None,
+    ]

@@ -183,6 +183,7 @@ result = result.with_columns(
     domain_address=pl.col("validated").struct.field("domain_address"),
     domain_name=pl.col("validated").struct.field("domain_name"),
     is_deliverable=pl.col("validated").struct.field("is_deliverable"),
+    email_status=pl.col("validated").struct.field("error"),
 )
 
 print(result)
@@ -198,8 +199,9 @@ The `validate_email` function returns a struct with the following fields:
 - `domain_address`: The IP address if a domain literal was used (null otherwise)
 - `domain_name`: The domain name (null if invalid)
 - `is_deliverable`: Whether the email is deliverable based on MX records (null if invalid or not checked)
+- `error`: The validation error message (null for valid emails and null inputs)
 
-Invalid emails will have all fields set to null, making it easy to filter valid emails:
+Invalid emails have null validation fields and a populated `error` field. This makes it easy to filter valid emails:
 
 ```python
 # Filter to only valid emails
