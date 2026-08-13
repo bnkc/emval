@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.13](https://github.com/bnkc/emval/compare/v0.1.12...v0.1.13) - 2026-08-13
+
+### Added
+
+- *(polars)* expose validation errors
+
+### Fixed
+
+- *(dns)* avoid nested Tokio runtime panic
+
+### Other
+
+- migrate retired macOS runner
+- target supported free-threaded Python
+- update ethnum for Rust 1.95
+
 ## [0.1.12](https://github.com/bnkc/emval/compare/v0.1.11...v0.1.12) - 2025-11-09
 
 ### Other
